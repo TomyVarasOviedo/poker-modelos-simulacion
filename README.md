@@ -1,14 +1,13 @@
 # Poker game
 > Juego de poker para realizar las simulaciones de la materia de modelos y simulacion
 > ## codigo base:
-> """python
+```python
     WIDTH, HEIGHT = 800, 600
     FPS = 30
-
     WHITE = (255, 255, 255)
     GREEN = (0, 128, 0)
     BLACK = (0, 0, 0)
-
+    
     # Clase que representa una carta
     class Card:
         def __init__(self, suit, rank):
@@ -193,4 +192,4 @@
         # Inicializar la interfaz gráfica
         ui = PokerUI(game)
         ui.run()
-"""
+```
