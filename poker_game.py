@@ -42,7 +42,27 @@ class PokerGame:
         self.deck.shuffle()
         self.players_hands = [self.deck.deal(2) for _ in range(self.num_players)]
         community_cards = self.deck.deal(5)
-        return self.monte_carlo_probability(community_cards)
+        
+        # Calculate final hand strengths
+        hand_strengths = []
+        for hand in self.players_hands:
+            all_cards = hand + community_cards
+            score = self.calculate_hand_score(all_cards)
+            hand_strengths.append(score)
+        
+        # Find winner (index of highest strength)
+        winner = int(hand_strengths.index(max(hand_strengths)))
+        
+        # Calculate profits (simplified)
+        profits = [-10] * self.num_players  # Everyone loses 10 by default
+        profits[winner] = 10 * (self.num_players - 1)  # Winner takes all
+        
+        # Return dictionary with game results
+        return {
+            "winner": winner,
+            "profits": profits,
+            "hand_strengths": hand_strengths
+        }
     
     def monte_carlo_probability(self, community_cards, num_simulations=1000):
         wins = [0] * self.num_players

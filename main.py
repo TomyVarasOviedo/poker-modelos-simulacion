@@ -1,23 +1,13 @@
 import random
 from collections import Counter
 from itertools import combinations
+from typing import Dict
 import tkinter as tk
+from models.Card import Card
 from poker_game import PokerGame
 from poker_gui import PokerGUI
-
-class Card:
-    def __init__(self, suit, value):
-        self.suit = suit
-        self.value = value
-    
-    def __str__(self):
-        return f"{self.value} of {self.suit}"
-    
-    def __eq__(self, other):
-        # Add equality comparison
-        if isinstance(other, Card):
-            return self.suit == other.suit and self.value == other.value
-        return False
+from strategies.ConservativeStrategy import ConservativeStrategy
+from strategies.AggressiveStrategy import AggressiveStrategy
 
 class Deck:
     def __init__(self):
@@ -57,7 +47,25 @@ class PokerGame:
         for i, hand in enumerate(self.players_hands):
             print(f"Player {i+1}:", ", ".join(str(card) for card in hand))
         
-        return self.monte_carlo_probability(community_cards)
+        # Evaluate hands and determine the winner
+        hand_strengths = []
+        for hand in self.players_hands:
+            all_cards = hand + community_cards
+            score = self.calculate_hand_score(all_cards)
+            hand_strengths.append(score)
+        
+        winner = int(hand_strengths.index(max(hand_strengths)))
+        
+        # Calculate profits (simplified)
+        profits = [-10] * self.num_players  # Everyone loses 10 by default
+        profits[winner] = 10 * (self.num_players - 1)  # Winner takes all
+        
+        # Return dictionary with game results
+        return {
+            "winner": winner,
+            "profits": profits,
+            "hand_strengths": hand_strengths
+        }
     
     def monte_carlo_probability(self, community_cards, num_simulations=1000):
         wins = [0] * self.num_players
@@ -154,6 +162,62 @@ def run_gui_mode():
     root = tk.Tk()
     app = PokerGUI(root)
     root.mainloop()
+
+def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
+    """Run poker simulations using multiple threads"""
+    from concurrent.futures import ThreadPoolExecutor
+    
+    strategies = {
+        "Conservative": ConservativeStrategy(),
+        "Aggressive": AggressiveStrategy()
+    }
+    
+    results = {
+        name: {"wins": 0, "total_profit": 0.0} 
+        for name in strategies.keys()
+    }
+    
+    games_per_thread = num_games // num_threads
+    
+    def run_batch(batch_size):
+        batch_results = {
+            name: {"wins": 0, "profit": 0.0}
+            for name in strategies.keys()
+        }
+        
+        for _ in range(batch_size):
+            game = PokerGame(len(strategies))
+            result = game.simulate_game()  # Now returns a dictionary
+            winner_idx = result["winner"]
+            profits = result["profits"]
+            
+            strategy_name = list(strategies.keys())[winner_idx]
+            batch_results[strategy_name]["wins"] += 1
+            
+            for i, profit in enumerate(profits):
+                name = list(strategies.keys())[i]
+                batch_results[name]["profit"] += profit
+        
+        return batch_results
+    
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [
+            executor.submit(run_batch, games_per_thread) 
+            for _ in range(num_threads)
+        ]
+        
+        for future in futures:
+            batch_results = future.result()
+            for name, stats in batch_results.items():
+                results[name]["wins"] += stats["wins"]
+                results[name]["total_profit"] += stats["profit"]
+    
+    # Calculate final statistics
+    for name in results:
+        results[name]["win_rate"] = results[name]["wins"] / num_games
+        results[name]["avg_profit"] = results[name]["total_profit"] / num_games
+        
+    return results
 
 if __name__ == "__main__":
     import sys

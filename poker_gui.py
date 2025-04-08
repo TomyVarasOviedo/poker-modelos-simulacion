@@ -1,172 +1,146 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
-from poker_game import PokerGame
-from card_utils import CardDisplay
+from ttkbootstrap.constants import *
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pandas as pd
+from typing import List, Dict
 
 class PokerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Texas Hold'em Simulator")
-        self.root.geometry("1024x768")
+        self.root.title("Poker Strategy Simulator")
+        self.root.geometry("1200x800")
         
-        # Game state
-        self.current_stage = "Pre-Flop"
-        self.game = None
-        self.community_cards = []
-        self.card_display = CardDisplay()
+        # Create main containers
+        self.control_frame = ttk.LabelFrame(self.root, text="Simulation Controls", padding=10)
+        self.control_frame.pack(fill=X, padx=5, pady=5)
         
-        self.setup_ui()
+        self.results_frame = ttk.LabelFrame(self.root, text="Simulation Results", padding=10)
+        self.results_frame.pack(fill=BOTH, expand=YES, padx=5, pady=5)
         
-    def setup_ui(self):
-        # Main container
-        self.main_container = ttk.Frame(self.root)
-        self.main_container.pack(fill="both", expand=True, padx=20, pady=10)
+        self._create_controls()
+        self._create_results_view()
         
-        # Top section - Game controls
-        self.setup_controls()
+    def _create_controls(self):
+        # Simulation controls
+        controls = ttk.Frame(self.control_frame)
+        controls.pack(fill=X, expand=YES)
         
-        # Middle section - Community cards
-        self.setup_community_cards()
+        ttk.Label(controls, text="Number of Games:").pack(side=LEFT, padx=5)
+        self.num_games = ttk.Entry(controls, width=10)
+        self.num_games.insert(0, "1000")
+        self.num_games.pack(side=LEFT, padx=5)
         
-        # Bottom section - Player hands
-        self.setup_player_section()
+        ttk.Label(controls, text="Number of Threads:").pack(side=LEFT, padx=5)
+        self.num_threads = ttk.Entry(controls, width=5)
+        self.num_threads.insert(0, "4")
+        self.num_threads.pack(side=LEFT, padx=5)
         
-        # Status bar
-        self.setup_status_bar()
+        self.start_btn = ttk.Button(
+            controls, 
+            text="Start Simulation",
+            command=self._run_simulation,
+            style="primary.TButton"
+        )
+        self.start_btn.pack(side=LEFT, padx=5)
         
-    def setup_controls(self):
-        control_frame = ttk.LabelFrame(self.main_container, text="Game Controls", padding=10)
-        control_frame.pack(fill="x", pady=(0, 10))
+        self.progress = ttk.Progressbar(
+            controls,
+            mode='determinate',
+            length=200
+        )
+        self.progress.pack(side=LEFT, padx=5)
         
-        # Left side - Game settings
-        settings_frame = ttk.Frame(control_frame)
-        settings_frame.pack(side="left")
+    def _create_results_view(self):
+        # Create notebook for different views
+        self.notebook = ttk.Notebook(self.results_frame)
+        self.notebook.pack(fill=BOTH, expand=YES, padx=5, pady=5)
         
-        ttk.Label(settings_frame, text="Players:").pack(side="left")
-        self.num_players = ttk.Spinbox(settings_frame, from_=2, to=8, width=5)
-        self.num_players.set(4)
-        self.num_players.pack(side="left", padx=5)
+        # Statistics tab
+        self.stats_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.stats_frame, text="Statistics")
         
-        # Right side - Stage controls
-        stages_frame = ttk.Frame(control_frame)
-        stages_frame.pack(side="right")
+        # Create treeview for statistics
+        self.stats_tree = ttk.Treeview(
+            self.stats_frame,
+            columns=("Strategy", "Wins", "Win Rate", "Avg Profit"),
+            show="headings"
+        )
         
-        self.stage_label = ttk.Label(stages_frame, text="Stage: Pre-Flop")
-        self.stage_label.pack(side="left", padx=10)
+        self.stats_tree.heading("Strategy", text="Strategy")
+        self.stats_tree.heading("Wins", text="Wins")
+        self.stats_tree.heading("Win Rate", text="Win Rate")
+        self.stats_tree.heading("Avg Profit", text="Avg Profit")
         
-        ttk.Button(control_frame, text="New Game", command=self.new_game).pack(side="left", padx=5)
-        ttk.Button(control_frame, text="Deal Flop", command=lambda: self.next_stage("Flop")).pack(side="left", padx=5)
-        ttk.Button(control_frame, text="Deal Turn", command=lambda: self.next_stage("Turn")).pack(side="left", padx=5)
-        ttk.Button(control_frame, text="Deal River", command=lambda: self.next_stage("River")).pack(side="left", padx=5)
+        self.stats_tree.pack(fill=BOTH, expand=YES)
         
-    def setup_community_cards(self):
-        self.community_frame = ttk.LabelFrame(self.main_container, text="Community Cards", padding=10)
-        self.community_frame.pack(fill="x", pady=(0, 10))
+        # Graphs tab
+        self.graphs_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.graphs_frame, text="Graphs")
         
-        # Placeholders for community cards
-        self.card_labels = []
-        for _ in range(5):
-            label = ttk.Label(self.community_frame, text=self.card_display.card_back, 
-                            font=('Arial', 40))
-            label.pack(side="left", padx=10)
-            self.card_labels.append(label)
+        # Create matplotlib figure
+        self.figure, self.ax = plt.subplots(figsize=(10, 6))
+        self.canvas = FigureCanvasTkAgg(self.figure, self.graphs_frame)
+        self.canvas.get_tk_widget().pack(fill=BOTH, expand=YES)
+        
+    def _run_simulation(self):
+        """Start the simulation with selected parameters"""
+        num_games = int(self.num_games.get())
+        num_threads = int(self.num_threads.get())
+        
+        # Disable controls during simulation
+        self.start_btn.configure(state="disabled")
+        self.progress["value"] = 0
+        
+        # Import here to avoid circular imports
+        from main import run_threaded_simulation
+        
+        # Run simulation in a separate thread to avoid GUI freezing
+        import threading
+        def simulation_thread():
+            results = run_threaded_simulation(num_games, num_threads)
+            self.root.after(0, lambda: self._update_results(results))
+        
+        thread = threading.Thread(target=simulation_thread)
+        thread.start()
+        
+    def _update_results(self, results: Dict):
+        """Update GUI with simulation results"""
+        # Clear previous results
+        for item in self.stats_tree.get_children():
+            self.stats_tree.delete(item)
             
-    def setup_player_section(self):
-        self.players_frame = ttk.LabelFrame(self.main_container, text="Players", padding=10)
-        self.players_frame.pack(fill="both", expand=True)
+        # Update statistics view
+        for strategy, stats in results.items():
+            self.stats_tree.insert(
+                "",
+                "end",
+                values=(
+                    strategy,
+                    stats["wins"],
+                    f"{stats['win_rate']:.2%}",
+                    f"${stats['avg_profit']:.2f}"
+                )
+            )
+            
+        # Update graph
+        self.ax.clear()
+        strategies = list(results.keys())
+        win_rates = [results[s]["win_rate"] for s in strategies]
         
-        # Will be populated when game starts
-        self.player_frames = []
+        self.ax.bar(strategies, win_rates)
+        self.ax.set_title("Strategy Win Rates")
+        self.ax.set_ylabel("Win Rate")
+        self.ax.tick_params(axis='x', rotation=45)
         
-    def setup_status_bar(self):
-        self.status_bar = ttk.Label(self.root, text="Ready to start", relief="sunken")
-        self.status_bar.pack(fill="x", side="bottom", pady=5)
+        self.figure.tight_layout()
+        self.canvas.draw()
         
-    def new_game(self):
-        # Clear previous game state
-        for frame in self.player_frames:
-            frame.destroy()
-        self.player_frames.clear()
-        
-        # Reset community cards
-        for label in self.card_labels:
-            label.config(text=self.card_display.card_back)
-            
-        # Initialize new game
-        num_players = int(self.num_players.get())
-        self.game = PokerGame(num_players)
-        self.game.simulate_game()
-        
-        # Setup player frames
-        self.setup_players()
-        
-        # Update status
-        self.current_stage = "Pre-Flop"
-        self.stage_label.config(text="Stage: Pre-Flop")
-        self.status_bar.config(text="New game started")
-        
-    def setup_players(self):
-        for i, hand in enumerate(self.game.players_hands):
-            player_frame = ttk.Frame(self.players_frame)
-            player_frame.pack(fill="x", pady=2)
-            
-            ttk.Label(player_frame, text=f"Player {i+1}").pack(side="left")
-            
-            # Create card symbols for player's hand
-            hand_frame = ttk.Frame(player_frame)
-            hand_frame.pack(side="left", padx=10)
-            
-            for card in hand:
-                card_label = ttk.Label(hand_frame, 
-                                     text=self.card_display.get_card_symbol(card),
-                                     font=('Arial', 40))
-                card_label.pack(side="left", padx=2)
-            
-            prob_label = ttk.Label(player_frame, text="Win Probability: --")
-            prob_label.pack(side="right")
-            
-            self.player_frames.append(player_frame)
-            
-    def next_stage(self, stage):
-        if not self.game:
-            self.status_bar.config(text="Please start a new game first")
-            return
-            
-        stages = {"Flop": (0, 3), "Turn": (3, 4), "River": (4, 5)}
-        if stage in stages:
-            start, end = stages[stage]
-            for i in range(start, end):
-                card = self.game.deck.cards[i]
-                self.card_labels[i].config(text=self.card_display.get_card_symbol(card))
-                
-        self.current_stage = stage
-        self.stage_label.config(text=f"Stage: {stage}")
-        self.update_probabilities()
-        
-    def update_probabilities(self):
-        if not self.game:
-            return
-            
-        visible_cards = []
-        if self.current_stage == "Pre-Flop":
-            visible_cards = []
-        elif self.current_stage == "Flop":
-            visible_cards = self.game.deck.cards[:3]
-        elif self.current_stage == "Turn":
-            visible_cards = self.game.deck.cards[:4]
-        elif self.current_stage == "River":
-            visible_cards = self.game.deck.cards[:5]
-            
-        probabilities = self.game.monte_carlo_probability(visible_cards)
-        
-        # Update probability labels with more detail
-        for i, prob in enumerate(probabilities):
-            prob_label = self.player_frames[i].winfo_children()[-1]
-            if prob > 0.01:  # Only show significant probabilities
-                prob_label.config(text=f"Win Probability: {prob:.1%}")
-            else:
-                prob_label.config(text="Win Probability: <1%")
+        # Re-enable controls
+        self.start_btn.configure(state="normal")
+        self.progress["value"] = 100
 
 def main():
     root = tk.Tk()
