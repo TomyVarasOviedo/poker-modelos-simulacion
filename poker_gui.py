@@ -12,13 +12,15 @@ class PokerGUI:
         self.root = root
         self.root.title("Poker Strategy Simulator")
         self.root.geometry("1200x800")
+        self.root.style = ttk.Style(theme='darkly')  #cambia el color
+        self.root.iconbitmap("poker_img.ico") #Icon del poker
         
         # Create main containers
         self.control_frame = ttk.LabelFrame(self.root, text="Simulation Controls", padding=10)
-        self.control_frame.pack(fill=X, padx=5, pady=5)
+        self.control_frame.pack(fill=X, padx=20, pady=20)
         
         self.results_frame = ttk.LabelFrame(self.root, text="Simulation Results", padding=10)
-        self.results_frame.pack(fill=BOTH, expand=YES, padx=5, pady=5)
+        self.results_frame.pack(fill=BOTH, expand=YES, padx=20, pady=20)
         
         self._create_controls()
         self._create_results_view()
@@ -28,12 +30,12 @@ class PokerGUI:
         controls = ttk.Frame(self.control_frame)
         controls.pack(fill=X, expand=YES)
         
-        ttk.Label(controls, text="Number of Games:").pack(side=LEFT, padx=5)
+        ttk.Label(controls, text="Number of Games:", font=("Courier", 12)).pack(side=LEFT, padx=5)
         self.num_games = ttk.Entry(controls, width=10)
         self.num_games.insert(0, "1000")
         self.num_games.pack(side=LEFT, padx=5)
         
-        ttk.Label(controls, text="Number of Threads:").pack(side=LEFT, padx=5)
+        ttk.Label(controls, text="Number of Threads:", font=("Courier", 12)).pack(side=LEFT, padx=5)
         self.num_threads = ttk.Entry(controls, width=5)
         self.num_threads.insert(0, "4")
         self.num_threads.pack(side=LEFT, padx=5)
@@ -42,7 +44,7 @@ class PokerGUI:
             controls, 
             text="Start Simulation",
             command=self._run_simulation,
-            style="primary.TButton"
+            style="danger.TButton"
         )
         self.start_btn.pack(side=LEFT, padx=5)
         
@@ -69,11 +71,20 @@ class PokerGUI:
             show="headings"
         )
         
-        self.stats_tree.heading("Strategy", text="Strategy")
-        self.stats_tree.heading("Wins", text="Wins")
-        self.stats_tree.heading("Win Rate", text="Win Rate")
-        self.stats_tree.heading("Avg Profit", text="Avg Profit")
-        
+        self.stats_tree.heading("Strategy", text="Strategy", anchor="center")
+        self.stats_tree.column("Strategy", anchor="center")
+
+        self.stats_tree.heading("Wins", text="Wins", anchor="center")
+        self.stats_tree.column("Wins", anchor="center")
+
+        self.stats_tree.heading("Win Rate", text="Win Rate", anchor="center")
+        self.stats_tree.column("Win Rate", anchor="center")
+
+        self.stats_tree.heading("Avg Profit", text="Avg Profit", anchor="center")
+        self.stats_tree.column("Avg Profit", anchor="center")
+
+        style = ttk.Style()
+        style.configure("Treeview.Heading", font=("Helvetica", 12, "bold"), foreground="white")
         self.stats_tree.pack(fill=BOTH, expand=YES)
         
         # Graphs tab
