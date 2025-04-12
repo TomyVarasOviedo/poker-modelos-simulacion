@@ -8,6 +8,9 @@ from poker_game import PokerGame
 from poker_gui import PokerGUI
 from strategies.ConservativeStrategy import ConservativeStrategy
 from strategies.AggressiveStrategy import AggressiveStrategy
+from strategies.BluffingStrategy import BluffingStrategy
+from strategies.TightStrategy import TightStrategy
+from strategies.RandomStrategy import RandomStrategy
 
 class Deck:
     def __init__(self):
@@ -166,10 +169,20 @@ def run_gui_mode():
 def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
     """Run poker simulations using multiple threads"""
     from concurrent.futures import ThreadPoolExecutor
+    from strategies import (
+        ConservativeStrategy,
+        AggressiveStrategy,
+        BluffingStrategy,
+        TightStrategy,
+        RandomStrategy
+    )
     
     strategies = {
         "Conservative": ConservativeStrategy(),
-        "Aggressive": AggressiveStrategy()
+        "Aggressive": AggressiveStrategy(),
+        "Bluffing": BluffingStrategy(),
+        "Tight": TightStrategy(),
+        "Random": RandomStrategy()
     }
     
     results = {
