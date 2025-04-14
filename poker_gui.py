@@ -1,9 +1,11 @@
+from analytics.poker_analytics import PokerAnalytics
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import seaborn as sns
 import pandas as pd
 from typing import List, Dict
 
@@ -58,44 +60,44 @@ class PokerGUI:
     def _create_results_view(self):
         # Create notebook for different views
         self.notebook = ttk.Notebook(self.results_frame)
-        self.notebook.pack(fill=BOTH, expand=YES, padx=5, pady=5)
+        self.notebook.pack(fill=tk.BOTH, expand=tk.YES, padx=5, pady=5)
         
         # Statistics tab
         self.stats_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.stats_frame, text="Statistics")
         
-        # Create treeview for statistics
+        # Summary statistics
+        self.summary_tree = ttk.Treeview(
+            self.stats_frame,
+            columns=("Metric", "Value"),
+            show="headings"
+        )
+        self.summary_tree.heading("Metric", text="Metric")
+        self.summary_tree.heading("Value", text="Value")
+        self.summary_tree.pack(fill=tk.BOTH, expand=tk.YES, pady=5)
+        
+        # Detailed statistics
         self.stats_tree = ttk.Treeview(
             self.stats_frame,
-            columns=("Strategy", "Wins", "Win Rate", "Avg Profit"),
+            columns=("Strategy", "Wins", "Win Rate", "Avg Profit", "Std Dev"),
             show="headings"
         )
         
-        self.stats_tree.heading("Strategy", text="Strategy", anchor="center")
-        self.stats_tree.column("Strategy", anchor="center")
-
-        self.stats_tree.heading("Wins", text="Wins", anchor="center")
-        self.stats_tree.column("Wins", anchor="center")
-
-        self.stats_tree.heading("Win Rate", text="Win Rate", anchor="center")
-        self.stats_tree.column("Win Rate", anchor="center")
-
-        self.stats_tree.heading("Avg Profit", text="Avg Profit", anchor="center")
-        self.stats_tree.column("Avg Profit", anchor="center")
-
-        style = ttk.Style()
-        style.configure("Treeview.Heading", font=("Helvetica", 12, "bold"), foreground="white")
-        self.stats_tree.pack(fill=BOTH, expand=YES)
+        for col in self.stats_tree["columns"]:
+            self.stats_tree.heading(col, text=col)
+            self.stats_tree.column(col, anchor="center")
+        
+        self.stats_tree.pack(fill=tk.BOTH, expand=tk.YES)
         
         # Graphs tab
         self.graphs_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.graphs_frame, text="Graphs")
         
-        # Create matplotlib figure
-        self.figure, self.ax = plt.subplots(figsize=(10, 6))
+        # Create figure with subplots
+        self.figure, (self.ax1, self.ax2) = plt.subplots(2, 1, figsize=(10, 10))
         self.canvas = FigureCanvasTkAgg(self.figure, self.graphs_frame)
-        self.canvas.get_tk_widget().pack(fill=BOTH, expand=YES)
-        
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=tk.YES)
+
     def _run_simulation(self):
         """Start the simulation with selected parameters"""
         num_games = int(self.num_games.get())
@@ -119,32 +121,44 @@ class PokerGUI:
         
     def _update_results(self, results: Dict):
         """Update GUI with simulation results"""
+        # Convert results to DataFrame
+        analytics = PokerAnalytics()
+        df = analytics.create_dataframe(results)
+        summary_stats = analytics.generate_summary_statistics(df)
+        
         # Clear previous results
-        for item in self.stats_tree.get_children():
-            self.stats_tree.delete(item)
-            
-        # Update statistics view
-        for strategy, stats in results.items():
+        for tree in [self.summary_tree, self.stats_tree]:
+            for item in tree.get_children():
+                tree.delete(item)
+        
+        # Update summary statistics
+        for metric in summary_stats.index:
+            self.summary_tree.insert(
+                "",
+                "end",
+                values=(metric, f"{summary_stats.loc[metric, 'Win Rate']:.4f}")
+            )
+        
+        # Update detailed statistics
+        for _, row in df.iterrows():
             self.stats_tree.insert(
                 "",
                 "end",
                 values=(
-                    strategy,
-                    stats["wins"],
-                    f"{stats['win_rate']:.2%}",
-                    f"${stats['avg_profit']:.2f}"
+                    row['Strategy'],
+                    row['Wins'],
+                    f"{row['Win Rate']:.2%}",
+                    f"${row['Avg Profit']:.2f}",
+                    f"${row['Total Profit']:.2f}"
                 )
             )
-            
-        # Update graph
-        self.ax.clear()
-        strategies = list(results.keys())
-        win_rates = [results[s]["win_rate"] for s in strategies]
         
-        self.ax.bar(strategies, win_rates)
-        self.ax.set_title("Strategy Win Rates")
-        self.ax.set_ylabel("Win Rate")
-        self.ax.tick_params(axis='x', rotation=45)
+        # Update graphs
+        self.ax1.clear()
+        self.ax2.clear()
+        
+        analytics.plot_win_rates(df, ax=self.ax1)
+        analytics.plot_profit_distribution(df, ax=self.ax2)
         
         self.figure.tight_layout()
         self.canvas.draw()

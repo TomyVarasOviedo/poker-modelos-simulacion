@@ -186,7 +186,7 @@ def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
     }
     
     results = {
-        name: {"wins": 0, "total_profit": 0.0} 
+        name: {"wins": 0, "total_profit": 0.0, "profit_history": []} 
         for name in strategies.keys()
     }
     
@@ -194,7 +194,7 @@ def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
     
     def run_batch(batch_size):
         batch_results = {
-            name: {"wins": 0, "profit": 0.0}
+            name: {"wins": 0, "profit": 0.0, "profit_history": []}
             for name in strategies.keys()
         }
         
@@ -210,6 +210,7 @@ def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
             for i, profit in enumerate(profits):
                 name = list(strategies.keys())[i]
                 batch_results[name]["profit"] += profit
+                batch_results[name]["profit_history"].append(profit)
         
         return batch_results
     
@@ -224,13 +225,29 @@ def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
             for name, stats in batch_results.items():
                 results[name]["wins"] += stats["wins"]
                 results[name]["total_profit"] += stats["profit"]
+                results[name]["profit_history"].extend(stats["profit_history"])
     
     # Calculate final statistics
     for name in results:
-        results[name]["win_rate"] = results[name]["wins"] / num_games
-        results[name]["avg_profit"] = results[name]["total_profit"] / num_games
-        
+        wins = results[name]["wins"]
+        total_profit = results[name]["total_profit"]
+        results[name].update({
+            "win_rate": wins / num_games,
+            "avg_profit": total_profit / num_games,
+            "std_dev": calculate_std_dev(results[name]["profit_history"]),
+            "max_profit": max(results[name]["profit_history"]),
+            "min_profit": min(results[name]["profit_history"])
+        })
+    
     return results
+
+def calculate_std_dev(profit_history):
+    """Calculate standard deviation of profit history"""
+    if not profit_history:
+        return 0.0
+    mean = sum(profit_history) / len(profit_history)
+    variance = sum((x - mean) ** 2 for x in profit_history) / len(profit_history)
+    return variance ** 0.5
 
 if __name__ == "__main__":
     import sys
