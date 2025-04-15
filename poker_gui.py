@@ -98,6 +98,23 @@ class PokerGUI:
         self.canvas = FigureCanvasTkAgg(self.figure, self.graphs_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=tk.YES)
 
+        # Player Statistics tab
+        self.players_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.players_frame, text="Player Stats")
+        
+        # Create player stats tree
+        self.player_stats_tree = ttk.Treeview(
+            self.players_frame,
+            columns=("Strategy", "Hands", "Win Rate", "Profit", "Bluff Rate", "Position"),
+            show="headings"
+        )
+        
+        for col in self.player_stats_tree["columns"]:
+            self.player_stats_tree.heading(col, text=col)
+            self.player_stats_tree.column(col, anchor="center")
+        
+        self.player_stats_tree.pack(fill=tk.BOTH, expand=tk.YES)
+
     def _run_simulation(self):
         """Start the simulation with selected parameters"""
         num_games = int(self.num_games.get())
@@ -121,33 +138,33 @@ class PokerGUI:
         
     def _update_results(self, results: Dict):
         """Update GUI with simulation results"""
-        # Convert results to DataFrame
         analytics = PokerAnalytics()
+        
+        # Create DataFrame and update statistics
         df = analytics.create_dataframe(results)
         summary_stats = analytics.generate_summary_statistics(df)
         
         # Clear previous results
-        for tree in [self.summary_tree, self.stats_tree]:
-            for item in tree.get_children():
-                tree.delete(item)
-        
+        for item in self.summary_tree.get_children():
+            self.summary_tree.delete(item)
+        for item in self.stats_tree.get_children():
+            self.stats_tree.delete(item)
+            
         # Update summary statistics
         for metric in summary_stats.index:
             self.summary_tree.insert(
-                "",
-                "end",
+                "", "end",
                 values=(metric, f"{summary_stats.loc[metric, 'Win Rate']:.4f}")
             )
         
         # Update detailed statistics
         for _, row in df.iterrows():
             self.stats_tree.insert(
-                "",
-                "end",
+                "", "end",
                 values=(
                     row['Strategy'],
-                    row['Wins'],
-                    f"{row['Win Rate']:.2%}",
+                    row['Hands Won'],
+                    f"{row['Win Rate']:.1%}",
                     f"${row['Avg Profit']:.2f}",
                     f"${row['Total Profit']:.2f}"
                 )
@@ -162,6 +179,34 @@ class PokerGUI:
         
         self.figure.tight_layout()
         self.canvas.draw()
+
+        # Update player statistics
+        for item in self.player_stats_tree.get_children():
+            self.player_stats_tree.delete(item)
+
+        for i, player_stats in enumerate(results["player_stats"]):
+            win_rate = player_stats["hands_won"] / max(1, player_stats["hands_played"])
+            bluff_rate = (player_stats["bluffs_successful"] / 
+                        max(1, player_stats["bluffs_attempted"]))
+            
+            position_stats = []
+            for pos in ["early", "middle", "late"]:
+                pos_stats = player_stats["position_stats"][pos]
+                pos_wr = pos_stats["won"] / max(1, pos_stats["played"])
+                position_stats.append(f"{pos}: {pos_wr:.1%}")
+            
+            self.player_stats_tree.insert(
+                "",
+                "end",
+                values=(
+                    results["strategies"][i],
+                    player_stats["hands_played"],
+                    f"{win_rate:.1%}",
+                    f"${player_stats['total_profit']:.2f}",
+                    f"{bluff_rate:.1%}",
+                    " | ".join(position_stats)
+                )
+            )
         
         # Re-enable controls
         self.start_btn.configure(state="normal")

@@ -1,3 +1,1 @@
-from .Card import Card
-
-__all__ = ['Card']
+# Empty file to mark directory as Python package

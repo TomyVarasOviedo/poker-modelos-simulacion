@@ -1,5 +1,7 @@
 import random
 from collections import Counter
+from models.betting_system import BettingSystem, BettingRound
+from models.player_profile import PlayerProfile
 
 class Card:
     def __init__(self, suit, value):
@@ -33,37 +35,108 @@ class Deck:
                 return
 
 class PokerGame:
-    def __init__(self, num_players):
+    def __init__(self, num_players, initial_stack=1000):
         self.num_players = num_players
         self.deck = Deck()
         self.players_hands = []
-    
+        self.betting_system = BettingSystem(num_players, initial_stack)
+        self.current_round = BettingRound.PREFLOP
+        self.player_profiles = []
+        # Initialize profiles for each strategy
+        for strategy in ["Conservative", "Aggressive", "Bluffing", "Tight", "Random"]:
+            self.add_player(strategy)
+
+    def add_player(self, strategy_name: str):
+        """Add a player with their profile"""
+        profile = PlayerProfile(strategy_name)
+        self.player_profiles.append(profile)
+
     def simulate_game(self):
         self.deck.shuffle()
+        self.betting_system.start_new_round()
         self.players_hands = [self.deck.deal(2) for _ in range(self.num_players)]
-        community_cards = self.deck.deal(5)
+        community_cards = []
+
+        # Preflop betting
+        self._handle_betting_round()
         
-        # Calculate final hand strengths
+        # Flop
+        community_cards.extend(self.deck.deal(3))
+        self.current_round = BettingRound.FLOP
+        self._handle_betting_round()
+        
+        # Turn
+        community_cards.extend(self.deck.deal(1))
+        self.current_round = BettingRound.TURN
+        self._handle_betting_round()
+        
+        # River
+        community_cards.extend(self.deck.deal(1))
+        self.current_round = BettingRound.RIVER
+        self._handle_betting_round()
+
+        # Evaluate hands and determine winner
         hand_strengths = []
         for hand in self.players_hands:
             all_cards = hand + community_cards
             score = self.calculate_hand_score(all_cards)
             hand_strengths.append(score)
-        
-        # Find winner (index of highest strength)
+
         winner = int(hand_strengths.index(max(hand_strengths)))
+        pot_size = self.betting_system.get_pot_size()
         
-        # Calculate profits (simplified)
-        profits = [-10] * self.num_players  # Everyone loses 10 by default
-        profits[winner] = 10 * (self.num_players - 1)  # Winner takes all
-        
-        # Return dictionary with game results
+        # Winner takes the pot
+        self.betting_system.player_stacks[winner] += pot_size
+
+        # Update player profiles with game results
+        for i in range(self.num_players):
+            position = self._get_position(i)
+            is_winner = i == winner
+            profit = self.betting_system.get_player_stack(i) - 1000
+            
+            # Update basic stats
+            self.player_profiles[i].stats["hands_played"] += 1
+            if is_winner:
+                self.player_profiles[i].stats["hands_won"] += 1
+            self.player_profiles[i].stats["total_profit"] += profit
+            
+            # Update position stats
+            pos_stats = self.player_profiles[i].stats["position_stats"][position]
+            pos_stats["played"] += 1
+            if is_winner:
+                pos_stats["won"] += 1
+            
+            # Update bluffing stats
+            if self._was_bluff_attempted(i):
+                self.player_profiles[i].stats["bluffs_attempted"] += 1
+                if self._was_bluff_successful(i):
+                    self.player_profiles[i].stats["bluffs_successful"] += 1
+
         return {
             "winner": winner,
-            "profits": profits,
-            "hand_strengths": hand_strengths
+            "profits": [self.betting_system.get_player_stack(i) - 1000 for i in range(self.num_players)],
+            "hand_strengths": hand_strengths,
+            "betting_history": self.betting_system.get_betting_history(),
+            "player_stats": [profile.stats for profile in self.player_profiles],
+            "strategies": [profile.strategy_name for profile in self.player_profiles]
         }
-    
+
+    def _handle_betting_round(self):
+        """Handle a complete betting round"""
+        for i in range(self.num_players):
+            if self.betting_system.get_player_stack(i) <= 0:
+                continue
+
+            action, amount = self.players[i].strategy.make_decision(
+                self.players_hands[i],
+                community_cards,
+                self.betting_system.get_pot_size(),
+                self.betting_system.current_bet,
+                self.betting_system.get_player_stack(i)
+            )
+            
+            self.betting_system.handle_action(i, action, amount)
+
     def monte_carlo_probability(self, community_cards, num_simulations=1000):
         wins = [0] * self.num_players
         ties = [0] * self.num_players
@@ -151,3 +224,34 @@ class PokerGame:
             if values[i+4] - values[i] == 4:
                 return True
         return False
+
+    def _get_position(self, player_idx: int) -> str:
+        """Determine player's position"""
+        positions = ["early", "middle", "late"]
+        position_idx = (player_idx * len(positions)) // self.num_players
+        return positions[position_idx]
+
+    def _was_bluff_attempted(self, player_idx: int) -> bool:
+        """Determine if player attempted to bluff"""
+        actions = self.betting_system.get_player_actions(player_idx)
+        hand_strength = self.calculate_hand_score(self.players_hands[player_idx])
+        return any(action["type"] == "raise" and hand_strength < 5 for action in actions)
+
+    def _was_bluff_successful(self, player_idx: int) -> bool:
+        """Determine if bluff was successful"""
+        return self._was_bluff_attempted(player_idx) and player_idx == winner
+
+    def _get_hand_type(self, hand_strength: int) -> str:
+        """Get the type of hand based on its strength"""
+        hand_types = {
+            9: "Straight Flush",
+            8: "Four of a Kind",
+            7: "Full House",
+            6: "Flush",
+            5: "Straight",
+            4: "Three of a Kind",
+            3: "Two Pair",
+            2: "One Pair",
+            1: "High Card"
+        }
+        return hand_types.get(hand_strength, "Unknown")

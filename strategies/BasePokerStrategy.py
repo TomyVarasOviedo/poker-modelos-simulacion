@@ -101,7 +101,13 @@ class BasePokerStrategy(ABC):
 
     def _calculate_pot_odds(self, pot_size: int, current_bet: int) -> float:
         """Calculate pot odds as a percentage"""
+        if current_bet == 0:
+            return 0.0
         return current_bet / (pot_size + current_bet)
+
+    def _calculate_implied_odds(self, pot_size: int, player_stack: int) -> float:
+        """Calculate implied odds based on pot size and remaining stack"""
+        return (pot_size + player_stack) / pot_size if pot_size > 0 else 0.0
 
     def _calculate_high_card_bonus(self, hand: List['Card']) -> float:
         """Calculate bonus for high cards in hand"""

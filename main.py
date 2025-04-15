@@ -38,6 +38,8 @@ class PokerGame:
         self.players_hands = []
     
     def simulate_game(self):
+        # Reset deck at the start of each game
+        self.deck = Deck()  # Add this line
         self.deck.shuffle()
         self.players_hands = [self.deck.deal(2) for _ in range(self.num_players)]
         community_cards = self.deck.deal(5)
@@ -153,6 +155,26 @@ class PokerGame:
                 return True
         return False
 
+    def _get_position(self, player_idx: int) -> str:
+        """Determine player's position based on their index"""
+        if self.num_players <= 3:
+            return "late" if player_idx == self.num_players - 1 else "early"
+            
+        positions = ["early"] * (self.num_players // 3)
+        positions += ["middle"] * (self.num_players // 3)
+        positions += ["late"] * (self.num_players - len(positions))
+        return positions[player_idx]
+
+    def _was_bluff_attempted(self, player_idx: int) -> bool:
+        """Determine if player attempted to bluff"""
+        # Simple implementation - consider it a bluff if player's hand strength is low
+        hand_strength = self.calculate_hand_score(self.players_hands[player_idx])
+        return hand_strength < 3  # Pair or lower is considered a bluff
+
+    def _was_bluff_successful(self, player_idx: int, winner: int) -> bool:
+        """Determine if bluff was successful"""
+        return self._was_bluff_attempted(player_idx) and player_idx == winner
+
 def run_console_mode():
     game = PokerGame(4)
     probabilities = game.simulate_game()
@@ -186,58 +208,95 @@ def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
     }
     
     results = {
-        name: {"wins": 0, "total_profit": 0.0, "profit_history": []} 
+        name: {
+            "wins": 0, 
+            "total_profit": 0.0, 
+            "profit_history": [],
+            "hands_played": 0,  # Initialize hands_played
+            "hands_won": 0,     # Initialize hands_won
+            "bluffs_attempted": 0,
+            "bluffs_successful": 0,
+            "position_stats": {
+                "early": {"played": 0, "won": 0},
+                "middle": {"played": 0, "won": 0},
+                "late": {"played": 0, "won": 0}
+            }
+        } 
         for name in strategies.keys()
     }
     
     games_per_thread = num_games // num_threads
     
     def run_batch(batch_size):
-        batch_results = {
-            name: {"wins": 0, "profit": 0.0, "profit_history": []}
-            for name in strategies.keys()
-        }
+        game = PokerGame(len(strategies))
+        batch_results = {name: results[name].copy() for name in strategies}
         
         for _ in range(batch_size):
-            game = PokerGame(len(strategies))
-            result = game.simulate_game()  # Now returns a dictionary
-            winner_idx = result["winner"]
-            profits = result["profits"]
+            game_result = game.simulate_game()
+            winner = game_result["winner"]
+            profits = game_result["profits"]
             
-            strategy_name = list(strategies.keys())[winner_idx]
-            batch_results[strategy_name]["wins"] += 1
-            
-            for i, profit in enumerate(profits):
-                name = list(strategies.keys())[i]
-                batch_results[name]["profit"] += profit
-                batch_results[name]["profit_history"].append(profit)
+            # Update statistics for each player
+            for i, (name, strategy) in enumerate(strategies.items()):
+                batch_results[name]["hands_played"] += 1  # Increment hands played
+                if i == winner:
+                    batch_results[name]["hands_won"] += 1  # Increment hands won
+                    batch_results[name]["wins"] += 1
+                    
+                batch_results[name]["total_profit"] += profits[i]
+                batch_results[name]["profit_history"].append(profits[i])
+                
+                # Update position stats
+                position = game._get_position(i)
+                batch_results[name]["position_stats"][position]["played"] += 1
+                if i == winner:
+                    batch_results[name]["position_stats"][position]["won"] += 1
+                
+                # Track bluffs
+                if game._was_bluff_attempted(i):
+                    batch_results[name]["bluffs_attempted"] += 1
+                    if game._was_bluff_successful(i, winner):  # Pass winner parameter
+                        batch_results[name]["bluffs_successful"] += 1
         
         return batch_results
-    
+
+    # Run simulations in parallel
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [
-            executor.submit(run_batch, games_per_thread) 
-            for _ in range(num_threads)
-        ]
+        future_results = [executor.submit(run_batch, games_per_thread) 
+                         for _ in range(num_threads)]
         
-        for future in futures:
+        # Combine results from all threads
+        for future in future_results:
             batch_results = future.result()
-            for name, stats in batch_results.items():
-                results[name]["wins"] += stats["wins"]
-                results[name]["total_profit"] += stats["profit"]
-                results[name]["profit_history"].extend(stats["profit_history"])
+            for name in strategies:
+                results[name]["hands_played"] += batch_results[name]["hands_played"]
+                results[name]["hands_won"] += batch_results[name]["hands_won"]
+                results[name]["wins"] += batch_results[name]["wins"]
+                results[name]["total_profit"] += batch_results[name]["total_profit"]
+                results[name]["profit_history"].extend(batch_results[name]["profit_history"])
+                results[name]["bluffs_attempted"] += batch_results[name]["bluffs_attempted"]
+                results[name]["bluffs_successful"] += batch_results[name]["bluffs_successful"]
+                
+                # Combine position stats
+                for position in ["early", "middle", "late"]:
+                    results[name]["position_stats"][position]["played"] += \
+                        batch_results[name]["position_stats"][position]["played"]
+                    results[name]["position_stats"][position]["won"] += \
+                        batch_results[name]["position_stats"][position]["won"]
     
-    # Calculate final statistics
-    for name in results:
-        wins = results[name]["wins"]
-        total_profit = results[name]["total_profit"]
-        results[name].update({
-            "win_rate": wins / num_games,
-            "avg_profit": total_profit / num_games,
-            "std_dev": calculate_std_dev(results[name]["profit_history"]),
-            "max_profit": max(results[name]["profit_history"]),
-            "min_profit": min(results[name]["profit_history"])
-        })
+    # Convert results to the expected format
+    results["player_stats"] = [
+        {
+            "hands_played": results[name]["hands_played"],
+            "hands_won": results[name]["hands_won"],
+            "total_profit": results[name]["total_profit"],
+            "bluffs_attempted": results[name]["bluffs_attempted"],
+            "bluffs_successful": results[name]["bluffs_successful"],
+            "position_stats": results[name]["position_stats"]
+        }
+        for name in strategies.keys()
+    ]
+    results["strategies"] = list(strategies.keys())
     
     return results
 

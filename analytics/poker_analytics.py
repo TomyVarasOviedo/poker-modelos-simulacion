@@ -3,19 +3,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List
 import numpy as np
+from models.player_profile import PlayerProfile
 
 class PokerAnalytics:
     @staticmethod
     def create_dataframe(results: Dict) -> pd.DataFrame:
         """Convert simulation results to a pandas DataFrame"""
         data = []
-        for strategy, stats in results.items():
+        for i, stats in enumerate(results["player_stats"]):
             data.append({
-                'Strategy': strategy,
-                'Wins': stats['wins'],
-                'Win Rate': stats['win_rate'],
-                'Avg Profit': stats['avg_profit'],
-                'Total Profit': stats['total_profit']
+                'Strategy': results["strategies"][i],
+                'Hands Played': stats['hands_played'],
+                'Hands Won': stats['hands_won'],
+                'Win Rate': stats['hands_won'] / max(1, stats['hands_played']),
+                'Total Profit': stats['total_profit'],
+                'Avg Profit': stats['total_profit'] / max(1, stats['hands_played']),
+                'Bluff Success': stats['bluffs_successful'] / max(1, stats['bluffs_attempted'])
             })
         return pd.DataFrame(data)
 
@@ -47,3 +50,20 @@ class PokerAnalytics:
         ax.set_ylabel('Average Profit ($)')
         ax.tick_params(axis='x', rotation=45)
         return ax
+
+    @staticmethod
+    def analyze_player_performance(player_profiles: List[PlayerProfile]) -> pd.DataFrame:
+        """Analyze detailed player performance"""
+        data = []
+        for profile in player_profiles:
+            data.append({
+                'Strategy': profile.strategy_name,
+                'Hands Played': profile.stats['hands_played'],
+                'Win Rate': profile.get_win_rate(),
+                'Avg Profit': profile.stats['total_profit'] / max(1, profile.stats['hands_played']),
+                'Bluff Success': profile.get_bluff_success_rate(),
+                'Early Position WR': profile.get_position_win_rate('early'),
+                'Middle Position WR': profile.get_position_win_rate('middle'),
+                'Late Position WR': profile.get_position_win_rate('late')
+            })
+        return pd.DataFrame(data)
