@@ -1,7 +1,18 @@
 from .BasePokerStrategy import BasePokerStrategy
 
+
 class AggressiveStrategy(BasePokerStrategy):
     def make_decision(self, hand, community_cards, pot_size, current_bet, player_stack):
+        """
+        This function implements the desicions according to actual hand and community cards
+
+        Args:
+            hand: list of Cards
+
+        Returns:
+            desicion [String]: raise, call or fold
+            percentage_bet? [float]: ???
+        """
         hand_strength = self.evaluate_hand_strength(hand, community_cards)
         pot_odds = self._calculate_pot_odds(pot_size, current_bet)
 

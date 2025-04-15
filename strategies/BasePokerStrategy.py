@@ -3,6 +3,7 @@ from typing import Tuple, List, Dict
 from enum import Enum
 from models.Card import Card
 
+
 class HandRank(Enum):
     HIGH_CARD = 1
     PAIR = 2
@@ -15,6 +16,7 @@ class HandRank(Enum):
     STRAIGHT_FLUSH = 9
     ROYAL_FLUSH = 10
 
+
 class BasePokerStrategy(ABC):
     def __init__(self):
         self.card_values = {
@@ -23,15 +25,23 @@ class BasePokerStrategy(ABC):
         }
 
     @abstractmethod
-    def make_decision(self, 
-                    hand: List['Card'],
-                    community_cards: List['Card'],
-                    pot_size: int,
-                    current_bet: int,
-                    player_stack: int) -> Tuple[str, int]:
+    def make_decision(self,
+                      hand: List['Card'],
+                      community_cards: List['Card'],
+                      pot_size: int,
+                      current_bet: int,
+                      player_stack: int) -> Tuple[str, int]:
         """
+        Abstract method to implements the each strategy
+
+        Args:
+            hand [List{Card}]: cards that are being played
+            community_cards [List{Card}]:
+            pot_size [int]:
+            current_bet [int]:
+            player_stack [int]:
         Returns:
-            Tuple[str, int]: (action, amount)
+            Tuple [str, int]: (action, amount)
             action: 'fold', 'call', or 'raise'
             amount: bet amount if raising
         """
@@ -40,21 +50,35 @@ class BasePokerStrategy(ABC):
     def evaluate_hand_strength(self, hand: List['Card'], community_cards: List['Card']) -> float:
         """
         Evaluates hand strength on a scale of 0 to 1
-        Returns: float between 0 (weakest) and 1 (strongest)
+
+        Args:
+            hand [List{Card}]:
+            community_cards [List{Card}]:
+
+        Returns:
+            strength [float]: between 0 (weakest) and 1 (strongest)
         """
         all_cards = hand + community_cards
         hand_rank = self._get_hand_rank(all_cards)
-        
+
         # Base score from hand rank
         base_score = hand_rank.value / len(HandRank)
-        
+
         # Adjust for high cards
         high_card_bonus = self._calculate_high_card_bonus(hand)
-        
+
         return min(base_score + high_card_bonus, 1.0)
 
     def _get_hand_rank(self, cards: List['Card']) -> HandRank:
-        """Determines the poker hand rank"""
+        """
+        Method to calculate points of hand 
+
+        Args:
+            cards [List{Card}]:
+
+        Returns:
+            handRank [HandRank]: points of hand according to its cards
+        """
         if self._is_royal_flush(cards):
             return HandRank.ROYAL_FLUSH
         if self._is_straight_flush(cards):
