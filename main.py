@@ -72,25 +72,74 @@ class PokerGame:
             "hand_strengths": hand_strengths
         }
     
-    def monte_carlo_probability(self, community_cards, num_simulations=1000):
-        wins = [0] * self.num_players
+    def monte_carlo_probability(self, community_cards, num_simulations=1000, num_threads=4):
+        """
+        Run Monte Carlo simulation with parallel processing
         
-        for _ in range(num_simulations):
-            temp_deck = Deck()
+        Args:
+            community_cards (List[Card]): Known community cards
+            num_simulations (int): Total number of simulations to run
+            num_threads (int): Number of threads to use for parallel processing
             
-            # Remove known cards using the new helper method
-            for hand in self.players_hands:
-                for card in hand:
+        Returns:
+            Dict containing:
+            - probabilities: List of win probabilities for each player
+            - confidence_intervals: List of (lower, upper) bounds for each player
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        import numpy as np
+        from scipy import stats
+        
+        sims_per_thread = num_simulations // num_threads
+        
+        def run_batch(batch_size):
+            wins = [0] * self.num_players
+            
+            for _ in range(batch_size):
+                temp_deck = Deck()
+                
+                # Remove known cards
+                for hand in self.players_hands:
+                    for card in hand:
+                        temp_deck.remove_card(card)
+                for card in community_cards:
                     temp_deck.remove_card(card)
-            for card in community_cards:
-                temp_deck.remove_card(card)
-            
-            # Find winner
-            winner = self.evaluate_hands(community_cards)
-            wins[winner] += 1
+                
+                # Deal remaining community cards
+                remaining = 5 - len(community_cards)
+                simulated_community = community_cards + temp_deck.deal(remaining)
+                
+                # Find winner
+                winner = self.evaluate_hands(simulated_community)
+                wins[winner] += 1
+                
+            return wins
         
-        probabilities = [w/num_simulations for w in wins]
-        return probabilities
+        # Run simulations in parallel
+        all_wins = []
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_results = [executor.submit(run_batch, sims_per_thread) 
+                             for _ in range(num_threads)]
+            
+            for future in future_results:
+                all_wins.append(future.result())
+        
+        # Combine results
+        total_wins = np.sum(all_wins, axis=0)
+        probabilities = total_wins / num_simulations
+        
+        # Calculate 95% confidence intervals using normal approximation
+        confidence_intervals = []
+        for wins in total_wins:
+            p = wins / num_simulations
+            se = np.sqrt(p * (1-p) / num_simulations)
+            ci = stats.norm.interval(0.95, loc=p, scale=se)
+            confidence_intervals.append((max(0, ci[0]), min(1, ci[1])))
+        
+        return {
+            "probabilities": probabilities.tolist(),
+            "confidence_intervals": confidence_intervals
+        }
     
     def evaluate_hands(self, community_cards):
         # Basic hand evaluation (can be expanded)

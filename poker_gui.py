@@ -15,7 +15,7 @@ class PokerGUI:
         self.root.title("Poker Strategy Simulator")
         self.root.geometry("1200x800")
         self.root.style = ttk.Style(theme='darkly')  #cambia el color
-        self.root.iconbitmap("poker_img.ico") #Icon del poker
+        # self.root.iconbitmap("poker_img.ico") #Icon del poker
         
         # Create main containers
         self.control_frame = ttk.LabelFrame(self.root, text="Simulation Controls", padding=10)
@@ -167,6 +167,20 @@ class PokerGUI:
                     f"{row['Win Rate']:.1%}",
                     f"${row['Avg Profit']:.2f}",
                     f"${row['Total Profit']:.2f}"
+                )
+            )
+        
+        # Update statistics with confidence intervals
+        for i, (prob, ci) in enumerate(zip(
+            results.get("probabilities", []), 
+            results.get("confidence_intervals", [])
+        )):
+            self.stats_tree.insert(
+                "", "end",
+                values=(
+                    f"Player {i+1}",
+                    f"{prob:.1%}",
+                    f"({ci[0]:.1%}, {ci[1]:.1%})",
                 )
             )
         
