@@ -9,12 +9,14 @@ import seaborn as sns
 import pandas as pd
 from typing import List, Dict
 
+
 class PokerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Poker Strategy Simulator")
         self.root.geometry("1400x900")  # Larger initial size
         self.root.style = ttk.Style(theme='darkly')
+        self.root.iconbitmap("poker_img.ico")
         
         # Configure custom styles
         self.root.style.configure('Title.TLabel', 
@@ -113,101 +115,89 @@ class PokerGUI:
         
     def _create_results_view(self):
         # Create notebook with custom styling
-        self.notebook = ttk.Notebook(
-            self.results_frame,
-            bootstyle="dark"
-        )
-        self.notebook.pack(fill=BOTH, expand=YES, padx=5, pady=5)
+        self.notebook = ttk.Notebook( 
+            self.results_frame, 
+            bootstyle="dark" 
+        ) 
+        self.notebook.pack(fill=BOTH, expand=YES, padx=5, pady=5) 
         
-        # Statistics tab
-        self.stats_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.stats_frame, text="Statistics")
+        # Statistics tab 
+        self.stats_frame = ttk.Frame(self.notebook, padding=10) 
+        self.notebook.add(self.stats_frame, text="Statistics") 
         
-        # Overview tab for graphs
-        self.overview_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.overview_frame, text="Overview")
+        # Overview tab for graphs 
+        self.overview_frame = ttk.Frame(self.notebook, padding=10) 
+        self.notebook.add(self.overview_frame, text="Overview") 
         
-        # Create matplotlib figure and axes
-        self.figure, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        self.canvas = FigureCanvasTkAgg(self.figure, self.overview_frame)
-        self.canvas.get_tk_widget().pack(fill=BOTH, expand=YES)
+        #Style graphs 
+        self.figure,(self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(12, 5)) 
+        self.figure.patch.set_facecolor("#202020") 
         
-        # Configure Treeview styles
+        # Create matplotlib figure and axes 
+        self.canvas = FigureCanvasTkAgg(self.figure, self.overview_frame) 
+        self.canvas.get_tk_widget().pack(fill=BOTH, expand=YES) 
+        
+        # Configure Treeview styles 
         self.root.style.configure(
-            "Treeview",
-            background="#2f3136",
-            foreground="white",
-            fieldbackground="#2f3136",
-            rowheight=25
-        )
-        self.root.style.configure(
+             "Treeview", 
+             background="#2f3136",
+               foreground="white",
+               fieldbackground="#2f3136",
+               rowheight=25 )
+        self.root.style.configure( 
             "Treeview.Heading",
             background="#212529",
             foreground="white",
-            relief="flat"
-        )
+            relief="flat" ) 
         
-        # Summary statistics with headers
-        ttk.Label(
-            self.stats_frame,
-            text="Summary Statistics",
+        # Summary statistics with headers 
+        ttk.Label( 
+            self.stats_frame, 
+            text="Summary Statistics", 
+            style='Subtitle.TLabel' 
+            ).pack(anchor=W, pady=(0, 5)) 
+        self.summary_tree = ttk.Treeview( 
+            self.stats_frame, 
+            columns=("Metric", "Value"), 
+            show="headings", height=5 ) 
+        self._configure_treeview(self.summary_tree) 
+        self.summary_tree.pack(fill=X, pady=(0, 10)) 
+        
+        # Detailed statistics with headers 
+        ttk.Label( 
+            self.stats_frame, 
+            text="Detailed Statistics", 
+            style='Subtitle.TLabel' 
+            ).pack(anchor=W, pady=(10, 5)) 
+        self.stats_tree = ttk.Treeview( 
+            self.stats_frame, columns=("Strategy", "Wins", "Win Rate", "Avg Profit", "Std Dev"), 
+            show="headings" ) 
+        self._configure_treeview(self.stats_tree) 
+        self.stats_tree.pack(fill=BOTH, expand=YES) 
+        
+        # Add Player Statistics section 
+        ttk.Label( 
+            self.stats_frame, 
+            text="Player Statistics", 
             style='Subtitle.TLabel'
-        ).pack(anchor=W, pady=(0, 5))
-        
-        self.summary_tree = ttk.Treeview(
-            self.stats_frame,
-            columns=("Metric", "Value"),
-            show="headings",
-            height=5
-        )
-        self._configure_treeview(self.summary_tree)
-        self.summary_tree.pack(fill=X, pady=(0, 10))
-        
-        # Detailed statistics with headers
-        ttk.Label(
-            self.stats_frame,
-            text="Detailed Statistics",
-            style='Subtitle.TLabel'
-        ).pack(anchor=W, pady=(10, 5))
-        
-        self.stats_tree = ttk.Treeview(
-            self.stats_frame,
-            columns=("Strategy", "Wins", "Win Rate", "Avg Profit", "Std Dev"),
-            show="headings"
-        )
-        self._configure_treeview(self.stats_tree)
-        self.stats_tree.pack(fill=BOTH, expand=YES)
-        
-        # Add Player Statistics section
-        ttk.Label(
-            self.stats_frame,
-            text="Player Statistics",
-            style='Subtitle.TLabel'
-        ).pack(anchor=W, pady=(10, 5))
-        
-        self.player_stats_tree = ttk.Treeview(
-            self.stats_frame,
-            columns=(
-                "Strategy",
-                "Hands Played",
-                "Win Rate",
+            ).pack(anchor=W, pady=(10, 5)) 
+        self.player_stats_tree = ttk.Treeview( 
+            self.stats_frame, columns=( 
+                "Strategy", 
+                "Hands Played", 
+                "Win Rate", 
                 "Total Profit",
                 "Bluff Rate",
-                "Position Stats"
-            ),
-            show="headings",
-            height=5
-        )
-        self._configure_treeview(self.player_stats_tree)
+                "Position Stats" ), show="headings", height=5 )
+        self._configure_treeview(self.player_stats_tree) 
         
         # Adjust column widths for better visibility
-        self.player_stats_tree.column("Strategy", width=100)
-        self.player_stats_tree.column("Hands Played", width=100)
-        self.player_stats_tree.column("Win Rate", width=80)
-        self.player_stats_tree.column("Total Profit", width=100)
+        self.player_stats_tree.column("Strategy", width=100) 
+        self.player_stats_tree.column("Hands Played", width=100) 
+        self.player_stats_tree.column("Win Rate", width=80) 
+        self.player_stats_tree.column("Total Profit", width=100) 
         self.player_stats_tree.column("Bluff Rate", width=80)
-        self.player_stats_tree.column("Position Stats", width=200)
-        
+        self.player_stats_tree.column("Position Stats", width=200) 
         self.player_stats_tree.pack(fill=X, pady=(0, 10))
         
     def _configure_treeview(self, tree):
@@ -274,7 +264,38 @@ class PokerGUI:
                     f"${row['Total Profit']:.2f}"
                 )
             )
-        
+        # Clear and update graphs dynamically
+        self.ax1.clear()
+        self.ax2.clear()
+    
+        # Update first graph: Strategy Win Rates Comparison
+        analytics.plot_win_rates(df, ax=self.ax1)
+        self.ax1.set_facecolor("#2f2f2f")  # Gray background for the plot
+        self.ax1.set_title("Strategy Win Rates Comparison", color="white") 
+        self.ax1.tick_params(colors="white")  # White axis labels
+        self.ax1.xaxis.label.set_color("white")  # Set x-axis label color to white
+        self.ax1.yaxis.label.set_color("white")  # Set y-axis label color to white
+        for bar in self.ax1.patches:
+            bar.set_color("#00bc8c")
+    
+        # Update second graph: Profit Distribution
+        analytics.plot_profit_distribution(df, ax=self.ax2)
+        self.ax2.set_facecolor("#2f2f2f")  # Gray background for the plot
+        self.ax2.set_title("Profit Distribution", color="white")  
+        self.ax2.tick_params(colors="white")  # White axis labels
+        self.ax2.xaxis.label.set_color("white")  # Set x-axis label color to white
+        self.ax2.yaxis.label.set_color("white")  # Set y-axis label color to white
+        for bar in self.ax2.patches:
+            bar.set_color("#00bc8c")
+
+        # Apply tight layout and redraw the canvas
+        self.figure.tight_layout()
+        self.canvas.draw()
+
+        # Update player statistics
+        for item in self.player_stats_tree.get_children():
+            self.player_stats_tree.delete(item)
+
         # Update statistics with confidence intervals
         for i, (prob, ci) in enumerate(zip(
             results.get("probabilities", []), 
@@ -288,17 +309,7 @@ class PokerGUI:
                     f"({ci[0]:.1%}, {ci[1]:.1%})",
                 )
             )
-        
-        # Update graphs
-        self.ax1.clear()
-        self.ax2.clear()
-        
-        analytics.plot_win_rates(df, ax=self.ax1)
-        analytics.plot_profit_distribution(df, ax=self.ax2)
-        
-        self.figure.tight_layout()
-        self.canvas.draw()
-
+      
         # Update player statistics
         for item in self.player_stats_tree.get_children():
             self.player_stats_tree.delete(item)
