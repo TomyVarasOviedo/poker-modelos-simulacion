@@ -16,7 +16,19 @@ class PokerGUI:
         self.root.title("Poker Strategy Simulator")
         self.root.geometry("1400x900")  # Larger initial size
         self.root.style = ttk.Style(theme='darkly')
-        self.root.iconbitmap("poker_img.ico")
+        
+        # Try to set icon, handle different platforms
+        try:
+            # For Windows
+            self.root.iconbitmap("poker_img.ico")
+        except:
+            # For Linux/Unix
+            try:
+                # Try .xbm format for Linux
+                self.root.iconbitmap('@poker_img.xbm')
+            except:
+                # Skip icon if not found
+                pass
         
         # Configure custom styles
         self.root.style.configure('Title.TLabel', 

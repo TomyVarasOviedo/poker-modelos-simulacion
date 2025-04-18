@@ -1,20 +1,16 @@
-import random
-from collections import Counter
+from models.Card import Card
 from models.betting_system import BettingSystem, BettingRound
 from models.player_profile import PlayerProfile
-
-class Card:
-    def __init__(self, suit, value):
-        self.suit = suit
-        self.value = value
-    
-    def __str__(self):
-        return f"{self.value} of {self.suit}"
-    
-    def __eq__(self, other):
-        if isinstance(other, Card):
-            return self.suit == other.suit and self.value == other.value
-        return False
+from collections import Counter
+import random
+import numpy as np
+from scipy import stats
+from concurrent.futures import ThreadPoolExecutor
+from strategies.ConservativeStrategy import ConservativeStrategy
+from strategies.AggressiveStrategy import AggressiveStrategy
+from strategies.BluffingStrategy import BluffingStrategy
+from strategies.TightStrategy import TightStrategy
+from strategies.RandomStrategy import RandomStrategy
 
 class Deck:
     def __init__(self):
@@ -42,9 +38,23 @@ class PokerGame:
         self.betting_system = BettingSystem(num_players, initial_stack)
         self.current_round = BettingRound.PREFLOP
         self.player_profiles = []
-        # Initialize profiles for each strategy
-        for strategy in ["Conservative", "Aggressive", "Bluffing", "Tight", "Random"]:
-            self.add_player(strategy)
+        self.community_cards = []
+        
+        # Initialize players with strategies (limit to num_players)
+        self.players = []
+        strategies = {
+            "Conservative": ConservativeStrategy(),
+            "Aggressive": AggressiveStrategy(),
+            "Bluffing": BluffingStrategy(),
+            "Tight": TightStrategy()
+        }
+        
+        # Add only the number of players requested
+        for i, (strategy_name, strategy) in enumerate(strategies.items()):
+            if i >= num_players:
+                break
+            self.players.append({"strategy": strategy})
+            self.add_player(strategy_name)
 
     def add_player(self, strategy_name: str):
         """Add a player with their profile"""
@@ -52,33 +62,35 @@ class PokerGame:
         self.player_profiles.append(profile)
 
     def simulate_game(self):
+        # Reset and reshuffle deck at the start of each game
+        self.deck = Deck()  # Create a fresh deck
         self.deck.shuffle()
         self.betting_system.start_new_round()
         self.players_hands = [self.deck.deal(2) for _ in range(self.num_players)]
-        community_cards = []
+        self.community_cards = []
 
         # Preflop betting
         self._handle_betting_round()
         
         # Flop
-        community_cards.extend(self.deck.deal(3))
+        self.community_cards.extend(self.deck.deal(3))
         self.current_round = BettingRound.FLOP
         self._handle_betting_round()
         
         # Turn
-        community_cards.extend(self.deck.deal(1))
+        self.community_cards.extend(self.deck.deal(1))
         self.current_round = BettingRound.TURN
         self._handle_betting_round()
         
         # River
-        community_cards.extend(self.deck.deal(1))
+        self.community_cards.extend(self.deck.deal(1))
         self.current_round = BettingRound.RIVER
         self._handle_betting_round()
 
         # Evaluate hands and determine winner
         hand_strengths = []
         for hand in self.players_hands:
-            all_cards = hand + community_cards
+            all_cards = hand + self.community_cards
             score = self.calculate_hand_score(all_cards)
             hand_strengths.append(score)
 
@@ -127,9 +139,9 @@ class PokerGame:
             if self.betting_system.get_player_stack(i) <= 0:
                 continue
 
-            action, amount = self.players[i].strategy.make_decision(
+            action, amount = self.players[i]["strategy"].make_decision(
                 self.players_hands[i],
-                community_cards,
+                self.community_cards,
                 self.betting_system.get_pot_size(),
                 self.betting_system.current_bet,
                 self.betting_system.get_player_stack(i)
@@ -137,58 +149,104 @@ class PokerGame:
             
             self.betting_system.handle_action(i, action, amount)
 
-    def monte_carlo_probability(self, community_cards, num_simulations=1000):
-        wins = [0] * self.num_players
-        ties = [0] * self.num_players
-        remaining_community = 5 - len(community_cards)
+    def monte_carlo_probability(self, community_cards, num_simulations=1000, num_threads=4):
+        """Run Monte Carlo simulation with parallel processing"""
+        # Always start with a fresh deck
+        self.deck = Deck()
+        self.deck.shuffle()
         
-        for _ in range(num_simulations):
-            # Create a temporary deck without known cards
-            temp_deck = Deck()
+        # Initialize player hands if not already done
+        if not self.players_hands:
+            self.players_hands = [self.deck.deal(2) for _ in range(self.num_players)]
+        
+        sims_per_thread = num_simulations // num_threads
+        
+        def run_batch(batch_size):
+            wins = [0] * self.num_players
             
-            # Remove known cards
-            for hand in self.players_hands:
-                for card in hand:
+            for _ in range(batch_size):
+                temp_deck = Deck()  # Create fresh deck for each simulation
+                
+                # Remove known cards
+                for hand in self.players_hands:
+                    for card in hand:
+                        temp_deck.remove_card(card)
+                for card in community_cards:
                     temp_deck.remove_card(card)
-            for card in community_cards:
-                temp_deck.remove_card(card)
+                
+                # Deal remaining community cards
+                remaining = 5 - len(community_cards)
+                simulated_community = community_cards + temp_deck.deal(remaining)
+                
+                # Calculate scores for all players
+                scores = []
+                for hand in self.players_hands:
+                    all_cards = hand + simulated_community
+                    score = self.calculate_hand_score(all_cards)
+                    scores.append(score)
+                
+                # Find winner
+                if scores:  # Check if we have valid scores
+                    max_score = max(scores)
+                    winner = scores.index(max_score)
+                    wins[winner] += 1
+                
+            return wins
+
+        # Run simulations in parallel
+        all_wins = []
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_results = [executor.submit(run_batch, sims_per_thread) 
+                             for _ in range(num_threads)]
             
-            # Deal remaining community cards
-            temp_deck.shuffle()
-            simulated_community = community_cards + temp_deck.deal(remaining_community)
-            
-            # Calculate scores for all players
-            scores = []
-            for hand in self.players_hands:
-                all_cards = hand + simulated_community
-                score = self.calculate_hand_score(all_cards)
-                scores.append(score)
-            
-            # Find winner(s)
-            max_score = max(scores)
-            winners = [i for i, score in enumerate(scores) if score == max_score]
-            
-            # Update wins and ties
-            if len(winners) == 1:
-                wins[winners[0]] += 1
+            for future in future_results:
+                all_wins.append(future.result())
+        
+        # Combine results
+        total_wins = np.sum(all_wins, axis=0)
+        probabilities = total_wins / num_simulations
+        
+        # Calculate 95% confidence intervals using normal approximation
+        confidence_intervals = []
+        for wins in total_wins:
+            p = wins / num_simulations
+            # Add error handling for edge cases
+            if p == 0 or p == 1:
+                # If probability is 0 or 1, use exact confidence interval
+                confidence_intervals.append((p, p))
             else:
-                # Split the win among tied players
-                for winner in winners:
-                    ties[winner] += 1
+                try:
+                    se = np.sqrt(p * (1-p) / num_simulations)
+                    if not np.isnan(se) and se > 0:
+                        ci = stats.norm.interval(0.95, loc=p, scale=se)
+                        confidence_intervals.append((max(0, ci[0]), min(1, ci[1])))
+                    else:
+                        # Fallback for very small standard errors
+                        confidence_intervals.append((max(0, p-0.05), min(1, p+0.05)))
+                except (ValueError, RuntimeWarning):
+                    # Fallback for numerical issues
+                    confidence_intervals.append((max(0, p-0.05), min(1, p+0.05)))
         
-        # Calculate final probabilities including ties
-        probabilities = [(wins[i] + ties[i]/2)/num_simulations for i in range(self.num_players)]
-        
-        return probabilities
-    
+        return {
+            "probabilities": probabilities.tolist(),
+            "confidence_intervals": confidence_intervals,
+            "player_stats": [profile.stats for profile in self.player_profiles],
+            "strategies": [profile.strategy_name for profile in self.player_profiles]
+        }
+
     def evaluate_hands(self, community_cards):
-        scores = []
+        """Evaluate all players' hands and return the index of the winner"""
+        scores = []  # Initialize scores list
         for hand in self.players_hands:
             all_cards = hand + community_cards
             score = self.calculate_hand_score(all_cards)
-            scores.append(score)
+            scores.append(score)  # Add the score to the list
+        
+        # Return winner index, handle empty scores case
+        if not scores:
+            return 0  # Default to first player if no scores
         return scores.index(max(scores))
-    
+
     def calculate_hand_score(self, cards):
         values = [card.value for card in cards]
         suits = [card.suit for card in cards]
@@ -233,13 +291,17 @@ class PokerGame:
 
     def _was_bluff_attempted(self, player_idx: int) -> bool:
         """Determine if player attempted to bluff"""
-        actions = self.betting_system.get_player_actions(player_idx)
+        actions = self.betting_system.get_betting_history()
         hand_strength = self.calculate_hand_score(self.players_hands[player_idx])
-        return any(action["type"] == "raise" and hand_strength < 5 for action in actions)
+        return any(action.player_id == player_idx and 
+            action.action_type == "raise" and 
+            hand_strength < 5 
+            for action in actions)
 
     def _was_bluff_successful(self, player_idx: int) -> bool:
         """Determine if bluff was successful"""
-        return self._was_bluff_attempted(player_idx) and player_idx == winner
+        current_winner = self.evaluate_hands(self.community_cards)
+        return self._was_bluff_attempted(player_idx) and player_idx == current_winner
 
     def _get_hand_type(self, hand_strength: int) -> str:
         """Get the type of hand based on its strength"""
