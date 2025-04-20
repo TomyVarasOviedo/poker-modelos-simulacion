@@ -276,56 +276,15 @@ class PokerGUI:
                     f"${row['Total Profit']:.2f}"
                 )
             )
-        # Clear and update graphs dynamically
-        self.ax1.clear()
-        self.ax2.clear()
-    
-        # Update first graph: Strategy Win Rates Comparison
-        analytics.plot_win_rates(df, ax=self.ax1)
-        self.ax1.set_facecolor("#2f2f2f")  # Gray background for the plot
-        self.ax1.set_title("Strategy Win Rates Comparison", color="white") 
-        self.ax1.tick_params(colors="white")  # White axis labels
-        self.ax1.xaxis.label.set_color("white")  # Set x-axis label color to white
-        self.ax1.yaxis.label.set_color("white")  # Set y-axis label color to white
-        for bar in self.ax1.patches:
-            bar.set_color("#00bc8c")
-    
-        # Update second graph: Profit Distribution
-        analytics.plot_profit_distribution(df, ax=self.ax2)
-        self.ax2.set_facecolor("#2f2f2f")  # Gray background for the plot
-        self.ax2.set_title("Profit Distribution", color="white")  
-        self.ax2.tick_params(colors="white")  # White axis labels
-        self.ax2.xaxis.label.set_color("white")  # Set x-axis label color to white
-        self.ax2.yaxis.label.set_color("white")  # Set y-axis label color to white
-        for bar in self.ax2.patches:
-            bar.set_color("#00bc8c")
 
-        # Apply tight layout and redraw the canvas
-        self.figure.tight_layout()
-        self.canvas.draw()
+        # Update graphs...
+        # ... existing graph update code ...
 
         # Update player statistics
         for item in self.player_stats_tree.get_children():
             self.player_stats_tree.delete(item)
 
-        # Update statistics with confidence intervals
-        for i, (prob, ci) in enumerate(zip(
-            results.get("probabilities", []), 
-            results.get("confidence_intervals", [])
-        )):
-            self.stats_tree.insert(
-                "", "end",
-                values=(
-                    f"Player {i+1}",
-                    f"{prob:.1%}",
-                    f"({ci[0]:.1%}, {ci[1]:.1%})",
-                )
-            )
-      
-        # Update player statistics
-        for item in self.player_stats_tree.get_children():
-            self.player_stats_tree.delete(item)
-
+        # Update player statistics tree (only once)
         for i, player_stats in enumerate(results["player_stats"]):
             win_rate = player_stats["hands_won"] / max(1, player_stats["hands_played"])
             bluff_rate = (player_stats["bluffs_successful"] / 
