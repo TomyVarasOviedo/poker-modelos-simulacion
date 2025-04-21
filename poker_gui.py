@@ -1,4 +1,5 @@
 from analytics.poker_analytics import PokerAnalytics
+from gui.poker_visualizer import PokerVisualizer
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
@@ -7,15 +8,21 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns
 import pandas as pd
-from typing import List, Dict
+import plotly.graph_objects as go
+import plotly.io as pio
+from tkinter import ttk
+import webbrowser
+from typing import Dict
 
 
 class PokerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Poker Strategy Simulator")
-        self.root.geometry("1400x900")  # Larger initial size
-        self.root.style = ttk.Style(theme='darkly')
+        self.root.geometry("1400x900")
+        
+        # Initialize style with ttkbootstrap
+        self.style = ttk.Style() 
         
         # Try to set icon, handle different platforms
         try:
@@ -24,20 +31,18 @@ class PokerGUI:
         except:
             # For Linux/Unix
             try:
-                # Try .xbm format for Linux
                 self.root.iconbitmap('@poker_img.xbm')
             except:
-                # Skip icon if not found
                 pass
-        
+                
         # Configure custom styles
-        self.root.style.configure('Title.TLabel', 
-                                font=('Helvetica', 24, 'bold'),
-                                foreground='#00bc8c')
+        self.style.configure('Title.TLabel', 
+                           font=('Helvetica', 24, 'bold'),
+                           foreground='#00bc8c')
         
-        self.root.style.configure('Subtitle.TLabel',
-                                 font=('Helvetica', 12),
-                                 foreground='#6c757d')
+        self.style.configure('Subtitle.TLabel',
+                           font=('Helvetica', 12),
+                           foreground='#6c757d')
         
         # Create header
         header = ttk.Frame(self.root, padding="20 20 20 0")
@@ -150,13 +155,13 @@ class PokerGUI:
         self.canvas.get_tk_widget().pack(fill=BOTH, expand=YES) 
         
         # Configure Treeview styles 
-        self.root.style.configure(
+        self.style.configure(
              "Treeview", 
              background="#2f3136",
                foreground="white",
                fieldbackground="#2f3136",
                rowheight=25 )
-        self.root.style.configure( 
+        self.style.configure( 
             "Treeview.Heading",
             background="#212529",
             foreground="white",
@@ -212,6 +217,13 @@ class PokerGUI:
         self.player_stats_tree.column("Position Stats", width=200) 
         self.player_stats_tree.pack(fill=X, pady=(0, 10))
         
+        # Add Interactive Analysis tab
+        self.analysis_frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(self.analysis_frame, text="Interactive Analysis")
+        
+        # Create placeholder for Plotly figure
+        self.plotly_widget = None
+
     def _configure_treeview(self, tree):
         """Configure consistent treeview styling"""
         for col in tree["columns"]:
@@ -308,6 +320,38 @@ class PokerGUI:
                     " | ".join(position_stats)
                 )
             )
+        
+        # Update interactive visualization
+        visualizer = PokerVisualizer()
+        fig = visualizer.create_interactive_dashboard(results)
+        
+        # Create an HTML file with the Plotly figure
+        html_path = "poker_analysis.html"
+        fig.write_html(html_path)
+        
+        # Create a button to open the interactive dashboard
+        if hasattr(self, 'open_dashboard_btn'):
+            self.open_dashboard_btn.destroy()
+        
+        self.open_dashboard_btn = ttk.Button(
+            self.analysis_frame,
+            text="Open Interactive Dashboard",
+            command=lambda: webbrowser.open(html_path),
+            bootstyle="info-outline"
+        )
+        self.open_dashboard_btn.pack(pady=20)
+        
+        # Add explanatory text
+        if hasattr(self, 'dashboard_label'):
+            self.dashboard_label.destroy()
+        
+        self.dashboard_label = ttk.Label(
+            self.analysis_frame,
+            text="Click the button above to open the interactive analysis dashboard in your browser",
+            style='Subtitle.TLabel',
+            wraplength=400
+        )
+        self.dashboard_label.pack(pady=10)
         
         # Re-enable controls
         self.start_btn.configure(state="normal")

@@ -3,6 +3,7 @@ from collections import Counter
 from itertools import combinations
 from typing import Dict
 import tkinter as tk
+import ttkbootstrap as ttk
 from models.Card import Card
 from poker_game import PokerGame
 from poker_gui import PokerGUI
@@ -42,7 +43,7 @@ def run_console_mode():
     print(f"Hand strengths: {results['hand_strengths']}")
 
 def run_gui_mode():
-    root = tk.Tk()
+    root = ttk.Window(themename="darkly")  # Use ttkbootstrap Window with theme
     app = PokerGUI(root)
     root.mainloop()
 
