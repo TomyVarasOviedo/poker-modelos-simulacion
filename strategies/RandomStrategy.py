@@ -2,6 +2,8 @@ from .BasePokerStrategy import BasePokerStrategy
 import random
 
 class RandomStrategy(BasePokerStrategy):
+    def __init__(self):
+        super().__init__()
     def make_decision(self, hand, community_cards, pot_size, current_bet, player_stack):
         # Randomly choose an action
         action = random.choice(['fold', 'call', 'raise'])

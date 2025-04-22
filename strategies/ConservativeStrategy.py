@@ -12,3 +12,6 @@ class ConservativeStrategy(BasePokerStrategy):
             return 'call', current_bet
         else:  # Fold everything else
             return 'fold', 0
+        
+    def __init__(self):
+        super().__init__()

@@ -2,6 +2,8 @@ from .BasePokerStrategy import BasePokerStrategy
 
 
 class AggressiveStrategy(BasePokerStrategy):
+    def __init__(self):
+        super().__init__()
     def make_decision(self, hand, community_cards, pot_size, current_bet, player_stack):
         """
         This function implements the desicions according to actual hand and community cards
