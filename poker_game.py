@@ -1,3 +1,4 @@
+from typing import List
 from models.Card import Card
 from models.betting_system import BettingSystem, BettingRound
 from models.player_profile import PlayerProfile
@@ -31,6 +32,15 @@ class Deck:
                 return
 
 class PokerGame:
+    num_players: int
+    players_hands: List[List[Card]]
+    deck: Deck
+    betting_system: BettingSystem
+    current_round: BettingRound
+    player_profiles: List[PlayerProfile]
+    community_cards: List[Card]
+    players: List[dict]
+    
     def __init__(self, num_players, initial_stack=1000):
         self.num_players = num_players
         self.deck = Deck()
@@ -55,7 +65,7 @@ class PokerGame:
                 break
             self.players.append({"strategy": strategy})
             self.add_player(strategy_name)
-
+        
     def add_player(self, strategy_name: str):
         """Add a player with their profile"""
         profile = PlayerProfile(strategy_name)
@@ -139,7 +149,7 @@ class PokerGame:
             if self.betting_system.get_player_stack(i) <= 0:
                 continue
 
-            action, amount = self.players[i]["strategy"].make_decision(
+            action, amount = self.players[i].values().make_decision(
                 self.players_hands[i],
                 self.community_cards,
                 self.betting_system.get_pot_size(),
