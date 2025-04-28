@@ -54,8 +54,7 @@ class BettingSystem:
         if action == 'fold':
             self.betting_history.append(BettingAction(player_id, 'fold', 0))
             return True
-
-        if action == 'call':
+        elif action == 'call':
             call_amount = self.current_bet - self.player_bets[player_id]
             if call_amount > self.player_stacks[player_id]:
                 return False
@@ -64,8 +63,7 @@ class BettingSystem:
             self.current_pot += call_amount
             self.betting_history.append(BettingAction(player_id, 'call', call_amount))
             return True
-
-        if action == 'raise':
+        elif action == 'raise':
             if amount < self.min_raise or amount > self.player_stacks[player_id]:
                 return False
             self.player_stacks[player_id] -= amount
