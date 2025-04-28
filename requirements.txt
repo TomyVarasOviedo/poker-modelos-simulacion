@@ -18,3 +18,6 @@ plotly>=5.18.0
 
 # Type Checking
 mypy>=1.8.0
+
+# DB
+pymongo>=4.5.0
