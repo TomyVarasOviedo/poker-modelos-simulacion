@@ -2,17 +2,20 @@ from typing import Dict, List
 from dataclasses import dataclass
 from enum import Enum
 
+
 class BettingRound(Enum):
     PREFLOP = 0
     FLOP = 1
     TURN = 2
     RIVER = 3
 
+
 @dataclass
 class BettingAction:
     player_id: int
     action_type: str
     amount: int
+
 
 class BettingSystem:
     def __init__(self, num_players: int, initial_stack: int = 1000):
@@ -47,7 +50,17 @@ class BettingSystem:
         self.current_bet = self.big_blind
 
     def handle_action(self, player_id: int, action: str, amount: int = 0) -> bool:
-        """Handle a player's betting action"""
+        """
+        Handle a player's betting action
+
+        Args:
+            - player_id (int): ID of the player
+            - action (str): Action taken by the player ('fold', 'call', 'raise')
+            - amount (int): Amount to raise (only used if action is 'raise')
+
+        Returns:
+            - bool: True if action was successful, False otherwise
+        """
         if action not in ['fold', 'call', 'raise']:
             return False
 
@@ -61,7 +74,8 @@ class BettingSystem:
             self.player_stacks[player_id] -= call_amount
             self.player_bets[player_id] += call_amount
             self.current_pot += call_amount
-            self.betting_history.append(BettingAction(player_id, 'call', call_amount))
+            self.betting_history.append(
+                BettingAction(player_id, 'call', call_amount))
             return True
         elif action == 'raise':
             if amount < self.min_raise or amount > self.player_stacks[player_id]:
@@ -71,21 +85,45 @@ class BettingSystem:
             self.current_pot += amount
             self.current_bet = amount
             self.min_raise = amount * 2
-            self.betting_history.append(BettingAction(player_id, 'raise', amount))
+            self.betting_history.append(
+                BettingAction(player_id, 'raise', amount))
             return True
 
     def get_pot_size(self) -> int:
-        """Get current pot size"""
+        """
+        Get current pot size
+
+        Returns:
+            - int: Current pot size
+        """
         return self.current_pot
 
     def get_player_stack(self, player_id: int) -> int:
-        """Get player's remaining stack"""
+        """
+        Get player's remaining stack
+
+        Args:
+            - player_id (int): ID of the player
+
+        Returns:
+            - int: Remaining stack of the player
+        """
         return self.player_stacks[player_id]
 
     def get_min_raise(self) -> int:
-        """Get minimum raise amount"""
+        """
+        Get minimum raise amount
+
+        Returns:
+            - int: Minimum raise amount
+        """
         return self.min_raise
 
     def get_betting_history(self) -> List[BettingAction]:
-        """Get history of betting actions"""
+        """
+        Get history of betting actions
+
+        Returns:
+            - List[BettingAction]: List of betting actions
+        """
         return self.betting_history

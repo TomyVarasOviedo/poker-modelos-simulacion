@@ -100,22 +100,57 @@ class BasePokerStrategy(ABC):
         return HandRank.HIGH_CARD
 
     def _calculate_pot_odds(self, pot_size: int, current_bet: int) -> float:
-        """Calculate pot odds as a percentage"""
+        """
+        Calculate pot odds as a percentage
+
+        Args:
+            - pot_size [int]: current size of the pot
+            - current_bet [int]: current bet amount
+
+        Returns:
+            - pot_odds [float]: percentage of the pot odds
+        """
         if current_bet == 0:
             return 0.0
         return current_bet / (pot_size + current_bet)
 
     def _calculate_implied_odds(self, pot_size: int, player_stack: int) -> float:
-        """Calculate implied odds based on pot size and remaining stack"""
+        """
+        Calculate implied odds based on pot size and remaining stack
+
+        Args:
+            - pot_size [int]: current size of the pot
+            - player_stack [int]: remaining stack size
+
+        Returns:
+            - implied_odds [float]: percentage of the implied odds
+        """
         return (pot_size + player_stack) / pot_size if pot_size > 0 else 0.0
 
     def _calculate_high_card_bonus(self, hand: List['Card']) -> float:
-        """Calculate bonus for high cards in hand"""
+        """
+        Calculate bonus for high cards in hand
+
+        Args:
+            - hand [List{Card}]: list of cards in hand
+
+        Returns:
+            - high_card_bonus [float]: bonus based on the highest card in hand
+        """
         max_value = max(self.card_values[card.value] for card in hand)
         return (max_value - 2) / (14 - 2) * 0.1  # 0.1 is the maximum bonus
 
     # Helper methods for hand evaluation
     def _is_royal_flush(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand is a Royal Flush
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_royal_flush [bool]: True if the hand is a Royal Flush, False otherwise
+        """
         if len(cards) < 5:
             return False
         if not self._is_straight_flush(cards):
@@ -124,23 +159,68 @@ class BasePokerStrategy(ABC):
         return max(values) == 14  # Ace high
 
     def _is_straight_flush(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand is a Straight Flush
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_straight_flush [bool]: True if the hand is a Straight Flush, False otherwise
+        """
         return self._is_straight(cards) and self._is_flush(cards)
 
     def _has_four_of_kind(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand has Four of a Kind
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - has_four_of_kind [bool]: True if the hand has Four of a Kind, False otherwise
+        """
         value_counts = self._get_value_counts(cards)
         return 4 in value_counts.values()
 
     def _is_full_house(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand is a Full House
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_full_house [bool]: True if the hand is a Full House, False otherwise
+        """
         value_counts = self._get_value_counts(cards)
         return 3 in value_counts.values() and 2 in value_counts.values()
 
     def _is_flush(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand is a Flush
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_flush [bool]: True if the hand is a Flush, False otherwise
+        """
         if len(cards) < 5:
             return False
         suits = [card.suit for card in cards]
         return any(suits.count(suit) >= 5 for suit in set(suits))
 
     def _is_straight(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand is a Straight
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_straight [bool]: True if the hand is a Straight, False otherwise
+        """
         if len(cards) < 5:
             return False
         values = sorted(set(self.card_values[card.value] for card in cards))
@@ -150,20 +230,55 @@ class BasePokerStrategy(ABC):
         return False
 
     def _has_three_of_kind(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand has Three of a Kind
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - has_three_of_kind [bool]: True if the hand has Three of a Kind, False otherwise
+        """
         value_counts = self._get_value_counts(cards)
         return 3 in value_counts.values()
 
     def _is_two_pair(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand has Two Pair
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_two_pair [bool]: True if the hand has Two Pair, False otherwise
+        """
         value_counts = self._get_value_counts(cards)
         pairs = sum(1 for count in value_counts.values() if count >= 2)
         return pairs >= 2
 
     def _is_pair(self, cards: List['Card']) -> bool:
+        """
+        This function checks if the hand has a Pair
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - is_pair [bool]: True if the hand has a Pair, False otherwise
+        """
         value_counts = self._get_value_counts(cards)
         return 2 in value_counts.values()
 
     def _get_value_counts(self, cards: List['Card']) -> Dict[str, int]:
-        """Helper method to count occurrences of each card value"""
+        """
+        Helper method to count occurrences of each card value
+
+        Args:
+            - cards [List{Card}]: list of cards in hand
+
+        Returns:
+            - value_counts [Dict[str, int]]: dictionary with card values as keys and their counts as values
+        """
         value_counts = {}
         for card in cards:
             value_counts[card.value] = value_counts.get(card.value, 0) + 1

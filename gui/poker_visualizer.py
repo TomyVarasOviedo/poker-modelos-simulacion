@@ -4,9 +4,18 @@ import pandas as pd
 from typing import Dict
 import numpy as np
 
+
 class PokerVisualizer:
     def create_interactive_dashboard(self, results: Dict) -> go.Figure:
-        """Create interactive dashboard with Plotly"""
+        """
+        Create interactive dashboard with Plotly
+
+        Args:
+            - results [Dict]: Dictionary containing the results of the poker game
+
+        Returns:
+            - fig [go.Figure]: Plotly figure object containing the dashboard
+        """
         fig = make_subplots(
             rows=2, cols=2,
             subplot_titles=(
@@ -16,12 +25,12 @@ class PokerVisualizer:
                 'Bluff Success Rate'
             ),
             specs=[[{'type': 'bar'}, {'type': 'bar'}],
-                  [{'type': 'bar'}, {'type': 'bar'}]]
+                   [{'type': 'bar'}, {'type': 'bar'}]]
         )
 
         # Win rates plot
-        win_rates = [stats['hands_won'] / max(1, stats['hands_played']) 
-                    for stats in results['player_stats']]
+        win_rates = [stats['hands_won'] / max(1, stats['hands_played'])
+                     for stats in results['player_stats']]
         fig.add_trace(
             go.Bar(
                 name='Win Rate',
@@ -55,7 +64,7 @@ class PokerVisualizer:
                 pos = stats['position_stats'][position]
                 wr = pos['won'] / max(1, pos['played'])
                 position_stats.append(wr)
-            
+
             fig.add_trace(
                 go.Bar(
                     name=f'{position.title()} Position',
@@ -70,10 +79,10 @@ class PokerVisualizer:
         # Bluff success rate
         bluff_rates = []
         for stats in results['player_stats']:
-            success_rate = (stats['bluffs_successful'] / 
-                          max(1, stats['bluffs_attempted']))
+            success_rate = (stats['bluffs_successful'] /
+                            max(1, stats['bluffs_attempted']))
             bluff_rates.append(success_rate)
-        
+
         fig.add_trace(
             go.Bar(
                 name='Bluff Success Rate',

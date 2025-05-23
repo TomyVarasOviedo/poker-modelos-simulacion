@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+
 @dataclass
 class PlayerProfile:
     strategy_name: str
@@ -18,17 +19,38 @@ class PlayerProfile:
     })
 
     def get_win_rate(self) -> float:
+        """
+        This method calculates the win rate of the player.
+
+        Returns:
+            - float: The win rate of the player as a percentage.
+        """
         if self.stats["hands_played"] == 0:
             return 0.0
         return self.stats["hands_won"] / self.stats["hands_played"]
 
     def get_position_win_rate(self, position: str) -> float:
+        """
+        This method calculates the win rate of the player based on their position.
+
+        Args:
+            - position (str): The position of the player ('early', 'middle', 'late').
+
+        Returns:
+            - float: The win rate of the player in the specified position as a percentage.
+        """
         pos_stats = self.stats["position_stats"][position]
         if pos_stats["played"] == 0:
             return 0.0
         return pos_stats["won"] / pos_stats["played"]
 
     def get_bluff_success_rate(self) -> float:
+        """
+        This method calculates the bluff success rate of the player.
+
+        Returns:
+            - float: The bluff success rate of the player as a percentage.
+        """
         if self.stats["bluffs_attempted"] == 0:
             return 0.0
         return self.stats["bluffs_successful"] / self.stats["bluffs_attempted"]

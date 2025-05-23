@@ -5,10 +5,19 @@ from typing import Dict, List
 import numpy as np
 from models.player_profile import PlayerProfile
 
+
 class PokerAnalytics:
     @staticmethod
     def create_dataframe(results: Dict) -> pd.DataFrame:
-        """Convert simulation results to a pandas DataFrame"""
+        """
+        Convert simulation results to a pandas DataFrame
+
+        Args:
+            - results (Dict): Simulation results containing player statistics and strategies.
+
+        Returns:
+            - pd.DataFrame: DataFrame containing player statistics and strategies.
+        """
         data = []
         for i, stats in enumerate(results["player_stats"]):
             data.append({
@@ -24,15 +33,32 @@ class PokerAnalytics:
 
     @staticmethod
     def generate_summary_statistics(df: pd.DataFrame) -> pd.DataFrame:
-        """Generate summary statistics for each strategy"""
+        """
+        Generate summary statistics for each strategy
+
+        Args:
+            - df (pd.DataFrame): DataFrame containing player statistics and strategies.
+
+        Returns:
+            - pd.DataFrame: DataFrame containing summary statistics for each strategy.
+        """
         return df.describe()
 
     @staticmethod
     def plot_win_rates(df: pd.DataFrame, ax=None):
-        """Plot win rates comparison"""
+        """
+        Plot win rates comparison
+
+        Args:
+            - df (pd.DataFrame): DataFrame containing player statistics and strategies.
+            - ax (matplotlib.axes.Axes, optional): Axes to plot on. If None, a new figure is created.
+
+        Returns:
+            - ax (matplotlib.axes.Axes): Axes with the plot.
+        """
         if ax is None:
             _, ax = plt.subplots(figsize=(10, 6))
-        
+
         sns.barplot(data=df, x='Strategy', y='Win Rate', ax=ax)
         ax.set_title('Strategy Win Rates Comparison')
         ax.set_ylabel('Win Rate')
@@ -41,10 +67,19 @@ class PokerAnalytics:
 
     @staticmethod
     def plot_profit_distribution(df: pd.DataFrame, ax=None):
-        """Plot profit distribution"""
+        """
+        Plot profit distribution
+
+        Args:
+            - df (pd.DataFrame): DataFrame containing player statistics and strategies.
+            - ax (matplotlib.axes.Axes, optional): Axes to plot on. If None, a new figure is created.
+
+        Returns:
+            - ax (matplotlib.axes.Axes): Axes with the plot.
+        """
         if ax is None:
             _, ax = plt.subplots(figsize=(10, 6))
-        
+
         sns.barplot(data=df, x='Strategy', y='Avg Profit', ax=ax)
         ax.set_title('Average Profit by Strategy')
         ax.set_ylabel('Average Profit ($)')
@@ -53,7 +88,15 @@ class PokerAnalytics:
 
     @staticmethod
     def analyze_player_performance(player_profiles: List[PlayerProfile]) -> pd.DataFrame:
-        """Analyze detailed player performance"""
+        """
+        Analyze detailed player performance
+
+        Args:
+            - player_profiles (List[PlayerProfile]): List of player profiles to analyze.
+
+        Returns:
+            - pd.DataFrame: DataFrame containing detailed player performance statistics.
+        """
         data = []
         for profile in player_profiles:
             data.append({
