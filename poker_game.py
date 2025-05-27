@@ -142,6 +142,7 @@ class PokerGame:
             profit = self.betting_system.get_player_stack(i) - 1000
 
             # Update basic stats
+            self.player_profiles[i].stats["hands_dealt"] += 1
             self.player_profiles[i].stats["hands_played"] += 1
             if is_winner:
                 self.player_profiles[i].stats["hands_won"] += 1

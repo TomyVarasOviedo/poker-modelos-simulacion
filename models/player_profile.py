@@ -6,6 +6,7 @@ from typing import Dict, List
 class PlayerProfile:
     strategy_name: str
     stats: Dict = field(default_factory=lambda: {
+        "hands_dealt": 0,
         "hands_played": 0,
         "hands_won": 0,
         "total_profit": 0.0,

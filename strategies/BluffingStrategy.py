@@ -21,15 +21,16 @@ class BluffingStrategy(BasePokerStrategy):
             - desicion [String]: raise, call or fold
             - percentage_bet? [float]: ???
         """
+        import random
         hand_strength = self.evaluate_hand_strength(hand, community_cards)
         pot_odds = self._calculate_pot_odds(pot_size, current_bet)
 
         # Bluffing behavior: Randomly raise even with weak hands
-        if random.random() < 0.3:  # 30% chance to bluff
-            return 'raise', min(current_bet * 2, player_stack)
-        elif hand_strength > 0.7:  # Strong hands
+        if hand_strength > 0.7:
             return 'raise', min(current_bet * 3, player_stack)
-        elif hand_strength > 0.4 or pot_odds < 0.4:  # Decent hands or good odds
+        elif hand_strength > 0.5 and pot_odds < 0.4:
             return 'call', current_bet
+        elif random.random() < 0.25 and pot_odds < 0.3:
+            return 'raise', min(current_bet * 2, player_stack)  # Bluff more often
         else:
             return 'fold', 0

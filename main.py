@@ -4,14 +4,8 @@ from itertools import combinations
 from typing import Dict, List, Optional
 import tkinter as tk
 import ttkbootstrap as ttk
-from models.Card import Card
 from poker_game import PokerGame
 from poker_gui import PokerGUI
-from strategies.ConservativeStrategy import ConservativeStrategy
-from strategies.AggressiveStrategy import AggressiveStrategy
-from strategies.BluffingStrategy import BluffingStrategy
-from strategies.TightStrategy import TightStrategy
-from strategies.RandomStrategy import RandomStrategy
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
@@ -37,7 +31,7 @@ class PokerSimulator:
         """
         Run sample games to gather betting statistics
         """
-        for _ in range(min(self.config.num_games, self.config.sample_games)):
+        for _ in range(self.config.num_games):
             try:
                 self.game.simulate_game()
             except Exception as e:

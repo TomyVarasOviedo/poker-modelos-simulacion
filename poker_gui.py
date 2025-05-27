@@ -245,13 +245,13 @@ class PokerGUI:
         self.progress["value"] = 0
 
         # Import here to avoid circular imports
-        from main import run_threaded_simulation
+        from main import PokerSimulator
 
         # Run simulation in a separate thread to avoid GUI freezing
         import threading
 
         def simulation_thread():
-            results = run_threaded_simulation(num_games, num_threads)
+            results = PokerSimulator.run_threaded_simulation(num_games, num_threads)
             self.root.after(0, lambda: self._update_results(results))
 
         thread = threading.Thread(target=simulation_thread)
