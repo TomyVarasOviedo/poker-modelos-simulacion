@@ -1,5 +1,10 @@
 from analytics.poker_analytics import PokerAnalytics
 from gui.poker_visualizer import PokerVisualizer
+# Import here to avoid circular imports
+#from main import PokerSimulator
+# Run simulation in a separate thread to avoid GUI freezing
+import threading
+from poker_simulate import PokerSimulator
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
@@ -13,7 +18,15 @@ import plotly.io as pio
 from tkinter import ttk
 import webbrowser
 from typing import Dict
+from dataclasses import dataclass
 
+
+@dataclass
+class SimulationConfig:
+    num_players: int = 5
+    num_games: int = 1000
+    num_threads: int = 4
+    sample_games: int = 100
 
 class PokerGUI:
     def __init__(self, root):
@@ -243,16 +256,21 @@ class PokerGUI:
         # Disable controls during simulation
         self.start_btn.configure(state="disabled")
         self.progress["value"] = 0
+        print(f"{num_games} games will be simulated using {num_threads} threads...")
+        config = SimulationConfig(num_games=num_games, num_threads=num_threads)
 
-        # Import here to avoid circular imports
-        from main import run_threaded_simulation
+        simulate = PokerSimulator(config)
+        print(config)
+        results = simulate.run_threaded_simulation()
 
-        # Run simulation in a separate thread to avoid GUI freezing
-        import threading
+        self.root.after(0, lambda: self._update_results(results))
 
-        def simulation_thread():
-            results = run_threaded_simulation(num_games, num_threads)
-            self.root.after(0, lambda: self._update_results(results))
+
+
+       
+    def simulation_thread():
+        results = PokerSimulator().run_threaded_simulation(num_games, num_threads) 
+        self.root.after(0, lambda: self._update_results(results))
 
         thread = threading.Thread(target=simulation_thread)
         thread.start()

@@ -67,9 +67,10 @@ class PokerGame:
         self.players = []
         strategies = {
             "Conservative": ConservativeStrategy(),
+            "Random": RandomStrategy(),
             "Aggressive": AggressiveStrategy(),
             "Bluffing": BluffingStrategy(),
-            "Tight": TightStrategy()
+            "Tight": TightStrategy(),
         }
 
         # Add only the number of players requested
