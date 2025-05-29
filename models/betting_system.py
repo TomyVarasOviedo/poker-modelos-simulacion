@@ -16,6 +16,11 @@ class BettingAction:
     action_type: str
     amount: int
 
+    def __init__ (self, player_id: int, action_type: str, amount: int):
+        self.player_id = player_id
+        self.action_type = action_type
+        self.amount = amount
+
 
 class BettingSystem:
     def __init__(self, num_players: int, initial_stack: int = 1000):
@@ -65,7 +70,7 @@ class BettingSystem:
             return False
 
         if action == 'fold':
-            self.betting_history.append(BettingAction(player_id, 'fold', 0))
+            self.betting_history.append(BettingAction(player_id, 'fold', amount))
             return True
         elif action == 'call':
             call_amount = self.current_bet - self.player_bets[player_id]
