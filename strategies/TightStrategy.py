@@ -24,9 +24,14 @@ class TightStrategy(BasePokerStrategy):
         pot_odds = self._calculate_pot_odds(pot_size, current_bet)
 
         # Tight behavior: Only play very strong hands
-        if hand_strength > 0.85:  # Very strong hands
+        if hand_strength > 0.75:
             return 'raise', min(current_bet * 2, player_stack)
-        elif hand_strength > 0.7 and pot_odds < 0.3:  # Strong hands with good odds
+        elif hand_strength > 0.55 and pot_odds < 0.4:
             return 'call', current_bet
+        elif hand_strength > 0.4 and pot_odds < 0.2:
+            return 'call', current_bet
+        # Rare semi-bluff with weak hand if pot odds are very good
+        elif hand_strength > 0.3 and pot_odds < 0.15:
+            return 'raise', min(current_bet * 2, player_stack)
         else:
             return 'fold', 0

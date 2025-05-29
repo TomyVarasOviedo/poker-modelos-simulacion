@@ -6,6 +6,11 @@ import numpy as np
 
 
 class PokerVisualizer:
+    def __init__(self):
+        """
+        Initialize the PokerVisualizer class
+        """
+        pass
     def create_interactive_dashboard(self, results: Dict) -> go.Figure:
         """
         Create interactive dashboard with Plotly
@@ -29,7 +34,7 @@ class PokerVisualizer:
         )
 
         # Win rates plot
-        win_rates = [stats['hands_won'] / max(1, stats['hands_played'])
+        win_rates = [stats['hands_won'] / max(1, stats['hands_dealt'])
                      for stats in results['player_stats']]
         fig.add_trace(
             go.Bar(

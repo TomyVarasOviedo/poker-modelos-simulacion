@@ -265,9 +265,6 @@ class PokerGUI:
 
         self.root.after(0, lambda: self._update_results(results))
 
-
-
-       
     def simulation_thread():
         results = PokerSimulator().run_threaded_simulation(num_games, num_threads) 
         self.root.after(0, lambda: self._update_results(results))

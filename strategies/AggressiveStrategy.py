@@ -20,15 +20,16 @@ class AggressiveStrategy(BasePokerStrategy):
             desicion [String]: raise, call or fold
             percentage_bet? [float]: ???
         """
+        import random
         hand_strength = self.evaluate_hand_strength(hand, community_cards)
         pot_odds = self._calculate_pot_odds(pot_size, current_bet)
 
         # Aggressive play - bet more frequently with wider range
-        if hand_strength > 0.6:  # Moderately strong hands
-            return 'raise', min(current_bet * 3, player_stack)  # Bigger raises
-        elif hand_strength > 0.4:  # Even marginal hands
-            return 'raise', min(current_bet * 1.5, player_stack)
-        elif pot_odds < 0.4:  # Speculative hands with decent odds
+        if hand_strength > 0.7:
+            return 'raise', min(current_bet * 3, player_stack)
+        elif hand_strength > 0.5 and pot_odds < 0.4:
             return 'call', current_bet
+        elif random.random() < 0.15 and pot_odds < 0.25:
+            return 'raise', min(current_bet * 2, player_stack)  # Occasional bluff
         else:
             return 'fold', 0
