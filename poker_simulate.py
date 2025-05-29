@@ -1,17 +1,14 @@
-<<<<<<< fix
-from poker_game import PokerGame
-from poker_gui import PokerGUI
-import tkinter as tk
-import ttkbootstrap as ttk
-=======
 import random
 from collections import Counter
 from itertools import combinations
 from typing import Dict, List, Optional
-import tkinter as tk
-import ttkbootstrap as ttk
+from models.Card import Card
 from poker_game import PokerGame
-from poker_gui import PokerGUI
+from strategies.ConservativeStrategy import ConservativeStrategy
+from strategies.AggressiveStrategy import AggressiveStrategy
+from strategies.BluffingStrategy import BluffingStrategy
+from strategies.TightStrategy import TightStrategy
+from strategies.RandomStrategy import RandomStrategy
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
@@ -74,7 +71,7 @@ class PokerSimulator:
             "strategies": []
         }
 
-    def run_threaded_simulation(num_games: int, num_threads: int) -> Dict:
+    def run_threaded_simulation(self) -> Dict:
         """
         Run poker simulation with parallel processing
 
@@ -84,45 +81,8 @@ class PokerSimulator:
         Returns:
             - Dict: Simulation results
         """
-        config = SimulationConfig(num_games=num_games, num_threads=num_threads)
 
-        simulator = PokerSimulator(config)
-        return simulator.simulate()
+        #simulator = PokerSimulator(config)
+        return self.simulate()
 
-    def run_console_mode():
-        game = PokerGame(4)
-        results = game.simulate_game()
-        print(f"\nWinner: Player {results['winner'] + 1}")
-        print(f"Profits: {results['profits']}")
-        print(f"Hand strengths: {results['hand_strengths']}")
 
-    def run_gui_mode():
-        # Use ttkbootstrap Window with theme
-        root = ttk.Window(themename="darkly")
-        app = PokerGUI(root)
-        root.mainloop()
-
-    if __name__ == "__main__":
-        import sys
->>>>>>> main
-
-def run_console_mode():
-    game = PokerGame(4)
-    results = game.simulate_game()
-    print(f"\nWinner: Player {results['winner'] + 1}")
-    print(f"Profits: {results['profits']}")
-    print(f"Hand strengths: {results['hand_strengths']}")
-
-def run_gui_mode():
-    # Use ttkbootstrap Window with theme
-    root = ttk.Window(themename="darkly")
-    app = PokerGUI(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) > 1 and sys.argv[1] == '--console':
-        run_console_mode()
-    else:
-        run_gui_mode()
