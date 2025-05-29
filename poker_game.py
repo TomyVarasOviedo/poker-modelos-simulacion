@@ -46,21 +46,17 @@ class Deck:
 
 class PokerGame:
     num_players: int
-    players_hands: List[List[Card]]
     deck: Deck
     betting_system: BettingSystem
     current_round: BettingRound
-    player_profiles: List[PlayerProfile]
     community_cards: List[Card]
     players: List[Player]
 
     def __init__(self, num_players, initial_stack=1000):
         self.num_players = num_players
         self.deck = Deck()
-        self.players_hands = []
         self.betting_system = BettingSystem(num_players, initial_stack)
         self.current_round = BettingRound.PREFLOP
-        self.player_profiles = []
         self.community_cards = []
 
         # Initialize players with strategies (limit to num_players)
@@ -72,23 +68,10 @@ class PokerGame:
             "Bluffing": BluffingStrategy(),
             "Tight": TightStrategy(),
         }
-
+        print(strategies.values())
         # Add only the number of players requested
-        for i, (strategy_name, strategy) in enumerate(strategies.items()):
-            if i >= num_players:
-                break
-            self.players.append(Player(strategy))
-            self.add_player(strategy_name)
-
-    def add_player(self, strategy_name: str):
-        """
-        Add a player with their profile
-
-        Args:
-            - strategy_name (str): The name of the player's strategy.
-        """
-        profile = PlayerProfile(strategy_name)
-        self.player_profiles.append(profile)
+        for strategy in strategies.values():
+            self.players.append(Player(strategy=strategy))
 
     def simulate_game(self):
         """
@@ -101,8 +84,8 @@ class PokerGame:
         self.deck = Deck()  # Create a fresh deck
         self.deck.shuffle()
         self.betting_system.start_new_round()
-        self.players_hands = [self.deck.deal(2)
-                              for _ in range(self.num_players)]
+        for player in self.players:
+            player.player_hands = self.deck.deal(2)
         self.community_cards = []
 
         # Preflop betting
@@ -143,31 +126,31 @@ class PokerGame:
             profit = self.betting_system.get_player_stack(i) - 1000
 
             # Update basic stats
-            self.player_profiles[i].stats["hands_dealt"] += 1
-            self.player_profiles[i].stats["hands_played"] += 1
+            self.players[i].stats["hands_dealt"] += 1
+            self.players[i].stats["hands_played"] += 1
             if is_winner:
-                self.player_profiles[i].stats["hands_won"] += 1
-            self.player_profiles[i].stats["total_profit"] += profit
+                self.players[i].stats["hands_won"] += 1
+            self.players[i].stats["total_profit"] += profit
 
             # Update position stats
-            pos_stats = self.player_profiles[i].stats["position_stats"][position]
+            pos_stats = self.players[i].stats["position_stats"][position]
             pos_stats["played"] += 1
             if is_winner:
                 pos_stats["won"] += 1
 
             # Update bluffing stats
             if self._was_bluff_attempted(i):
-                self.player_profiles[i].stats["bluffs_attempted"] += 1
+                self.players[i].stats["bluffs_attempted"] += 1
                 if self._was_bluff_successful(i):
-                    self.player_profiles[i].stats["bluffs_successful"] += 1
-
+                    self.players[i].stats["bluffs_successful"] += 1
+        print(winner)
         return {
             "winner": winner,
             "profits": [self.betting_system.get_player_stack(i) - 1000 for i in range(self.num_players)],
             "hand_strengths": hand_strengths,
             "betting_history": self.betting_system.get_betting_history(),
-            "player_stats": [profile.stats for profile in self.player_profiles],
-            "strategies": [profile.strategy_name for profile in self.player_profiles]
+            "player_stats": [profile.stats for profile in self.players],
+            "strategies": [profile.strategy_name for profile in self.players]
         }
 
     def _handle_betting_round(self):
@@ -282,8 +265,8 @@ class PokerGame:
         return {
             "probabilities": probabilities.tolist(),
             "confidence_intervals": confidence_intervals,
-            "player_stats": [profile.stats for profile in self.player_profiles],
-            "strategies": [profile.strategy_name for profile in self.player_profiles]
+            "player_stats": [profile.stats for profile in self.players],
+            "strategies": [profile.strategy_name for profile in self.players]
         }
 
     def evaluate_hands(self, community_cards):
