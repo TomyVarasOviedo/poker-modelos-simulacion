@@ -18,8 +18,8 @@ class BettingAction:
     action_type: str
     amount: int
 
-    def __init__ (self, player_id: int, action_type: str, amount: int):
-        self.player_id = player_id
+    def __init__ (self, player: Player, action_type: str, amount: int):
+        self.player = player
         self.action_type = action_type
         self.amount = amount
 

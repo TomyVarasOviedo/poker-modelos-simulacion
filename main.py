@@ -6,7 +6,8 @@ import ttkbootstrap as ttk
 def run_console_mode():
     game = PokerGame(4)
     results = game.simulate_game()
-    print(f"\nWinner: Player {results['winner'] + 1}")
+    print(f"\nWinner: Player {results['winner']}")
+    print(f"Players: {results['players']}")
     print(f"Profits: {results['profits']}")
     print(f"Hand strengths: {results['hand_strengths']}")
 

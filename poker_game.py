@@ -1,7 +1,6 @@
 from typing import List
 from models.Card import Card
 from models.betting_system import BettingSystem, BettingRound
-from models.player_profile import PlayerProfile
 from models.player import Player
 from collections import Counter
 import random
@@ -55,8 +54,6 @@ class PokerGame:
     def __init__(self, num_players: int):
         self.num_players = num_players
         self.deck = Deck()
-        self.betting_system = BettingSystem(num_players, 1000)
-        self.current_round = BettingRound.PREFLOP
         self.community_cards = []
 
         # Initialize players with strategies (limit to num_players)
@@ -69,13 +66,15 @@ class PokerGame:
             "Random": RandomStrategy()
         }
         # Add only the number of players requested
-        for strategy in strategies.values():
+        for strategy_name in strategies.keys():
             if len(self.players) < self.num_players:
-                self.players.append(Player(strategy=strategy, player_hands=[], stack=0))
+                self.players.append(Player(strategy=strategies[strategy_name], strategy_name=strategy_name,player_hands=[], stack=0))
             else:
                 break
-
-    def simulate_game(self):
+        
+        self.betting_system = BettingSystem(self.num_players, self.players, 1000)
+        self.current_round = BettingRound.PREFLOP
+    def simulate_game(self): 
         """
         This method simulates a complete game of poker
 
@@ -85,7 +84,7 @@ class PokerGame:
         # Reset and reshuffle deck at the start of each game
         self.deck = Deck()  # Create a fresh deck
         self.deck.shuffle()
-        self.betting_system.start_new_round()
+        self.betting_system.start_new_round(players=self.players)
         for player in self.players:
             player.player_hands = self.deck.deal(2)
         self.community_cards = []
@@ -111,45 +110,52 @@ class PokerGame:
         # Evaluate hands and determine winner
         hand_strengths = {}
         for player in self.players:
-            for hand in player.player_hands:
-                all_cards = hand + self.community_cards
-                score = self.calculate_hand_score(all_cards)
-                hand_strengths.update({player: score})
+            all_cards = player.player_hands + self.community_cards
+            score = self.calculate_hand_score(all_cards)
+            hand_strengths.update({player.strategy_name: score})
 
-        winner = int((max(hand_strengths.values())))
-        pot_size = self.betting_system.get_pot_size()
+        winner = max(hand_strengths, key=hand_strengths.get)
+        winner_index = -1
+        for player in self.players:
+            if player.strategy_name == winner:
+                winner_index = self.players.index(player)
+                break
 
-        # Winner takes the pot
-        self.betting_system.player_stacks[winner] += pot_size
+        if winner_index == -1:
+            raise ValueError("Winner not found in player list")
+        
+        #Calculate pot size
+        pot_size = self.betting_system.get_pot_size()        
 
         # Update player profiles with game results
-        for i in range(self.num_players):
-            position = self._get_position(i)
-            is_winner = i == winner
-            profit = self.betting_system.get_player_stack(i) - 1000
+        for player in self.players:
+            position = self._get_position(winner_index)
+            profit = player.get_player_stack() - 1000
+            is_winner = player.strategy_name == winner
 
             # Update basic stats
-            self.players[i].stats["hands_dealt"] += 1
-            self.players[i].stats["hands_played"] += 1
+            player.stats["hands_dealt"] += 1
+            player.stats["hands_played"] += 1
             if is_winner:
-                self.players[i].stats["hands_won"] += 1
-            self.players[i].stats["total_profit"] += profit
+                player.stack += pot_size
+                player.stats["hands_won"] += 1
+            player.stats["total_profit"] += profit
 
             # Update position stats
-            pos_stats = self.players[i].stats["position_stats"][position]
-            pos_stats["played"] += 1
+            player.stats["position_stats"][position]["played"] += 1
             if is_winner:
-                pos_stats["won"] += 1
+                player.stats["position_stats"][position]["won"] += 1
 
             # Update bluffing stats
-            if self._was_bluff_attempted(i):
-                self.players[i].stats["bluffs_attempted"] += 1
-                if self._was_bluff_successful(i):
-                    self.players[i].stats["bluffs_successful"] += 1
+            if self._was_bluff_attempted(player):
+                player.stats["bluffs_attempted"] += 1
+                if self._was_bluff_successful(player):
+                    player.stats["bluffs_successful"] += 1
         print(winner)
         return {
             "winner": winner,
-            "profits": [self.betting_system.get_player_stack(i) - 1000 for i in range(self.num_players)],
+            "players": [player.strategy_name for player in self.players],
+            "profits": [player.get_player_stack() - 1000 for player in self.players],
             "hand_strengths": hand_strengths,
             "betting_history": self.betting_system.get_betting_history(),
             "player_stats": [profile.stats for profile in self.players],
@@ -158,19 +164,19 @@ class PokerGame:
 
     def _handle_betting_round(self):
         """Handle a complete betting round"""
-        for i in range(self.num_players):
-            if self.betting_system.get_player_stack(i) <= 0:
+        for player in self.players:
+            if player.get_player_stack() <= 0:
                 continue
 
-            action, amount = self.players[i].strategy.make_decision(
-                self.players_hands[i],
-                self.community_cards,
-                self.betting_system.get_pot_size(),
-                self.betting_system.current_bet,
-                self.betting_system.get_player_stack(i)
+            action, amount = player.strategy.make_decision(
+                hand=player.player_hands,
+                community_cards=self.community_cards,
+                pot_size=self.betting_system.get_pot_size(),
+                current_bet=self.betting_system.current_bet,
+                player_stack=player.get_player_stack()
             )
 
-            self.betting_system.handle_action(i, action, amount)
+            self.betting_system.handle_action(player= player,player_idx=self.players.index(player),action= action, amount=amount)
 
     def monte_carlo_probability(self, community_cards, num_simulations=1000, num_threads=4):
         """
@@ -203,9 +209,8 @@ class PokerGame:
                 temp_deck = Deck()  # Create fresh deck for each simulation
                 for player in self.players:
                     # Remove known cards
-                    for hand in player.player_hands:
-                        for card in hand:
-                            temp_deck.remove_card(card)
+                    for card in player.player_hands:
+                        temp_deck.remove_card(card)
                     for card in community_cards:
                         temp_deck.remove_card(card)
 
@@ -216,8 +221,8 @@ class PokerGame:
 
                 # Calculate scores for all players
                 scores = []
-                for hand in self.players_hands:
-                    all_cards = hand + simulated_community
+                for player in self.players:
+                    all_cards = player.player_hands + simulated_community
                     score = self.calculate_hand_score(all_cards)
                     scores.append(score)
 
@@ -273,7 +278,7 @@ class PokerGame:
             "strategies": [profile.strategy_name for profile in self.players]
         }
 
-    def evaluate_hands(self, community_cards):
+    def evaluate_hands(self, community_cards: List[Card]):
         """
         Evaluate all players' hands and return the index of the winner
 
@@ -283,9 +288,9 @@ class PokerGame:
         Returns:
             - int: Index of the winning player
         """
-        scores = []  # Initialize scores list
-        for hand in self.players_hands:
-            all_cards = hand + community_cards
+        scores = []
+        for player in self.players:  # Initialize scores list
+            all_cards = player.player_hands + community_cards
             score = self.calculate_hand_score(all_cards)
             scores.append(score)  # Add the score to the list
 
@@ -294,7 +299,7 @@ class PokerGame:
             return 0  # Default to first player if no scores
         return scores.index(max(scores))
 
-    def calculate_hand_score(self, cards):
+    def calculate_hand_score(self, cards: List[Card]):
         """
         This method calculates the score of a poker hand
 
@@ -352,24 +357,23 @@ class PokerGame:
         position_idx = (player_idx * len(positions)) // self.num_players
         return positions[position_idx]
 
-    def _was_bluff_attempted(self, player_idx: int) -> bool:
+    def _was_bluff_attempted(self, player: Player) -> bool:
         """
         Determine if player attempted to bluff
 
         Args:
-            - player_idx (int): Index of the player
+            - player: Player object.
         Returns:
             - bool: True if bluff was attempted, False otherwise
         """
         actions = self.betting_system.get_betting_history()
-        hand_strength = self.calculate_hand_score(
-            self.players_hands[player_idx])
-        return any(action.player_id == player_idx and
+        hand_strength = self.calculate_hand_score(player.player_hands)
+        return any(action.player == player and
                    action.action_type == "raise" and
                    hand_strength < 5
                    for action in actions)
 
-    def _was_bluff_successful(self, player_idx: int) -> bool:
+    def _was_bluff_successful(self, player: Player) -> bool:
         """
         Determine if bluff was successful
 
@@ -379,7 +383,7 @@ class PokerGame:
             - bool: True if bluff was successful, False otherwise
         """
         current_winner = self.evaluate_hands(self.community_cards)
-        return self._was_bluff_attempted(player_idx) and player_idx == current_winner
+        return self._was_bluff_attempted(player) and self.players.index(player) == current_winner
 
     def _get_hand_type(self, hand_strength: int) -> str:
         """
