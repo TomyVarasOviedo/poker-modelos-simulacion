@@ -2,6 +2,8 @@ from typing import Dict, List
 from dataclasses import dataclass
 from enum import Enum
 
+from models.player import Player
+
 
 class BettingRound(Enum):
     PREFLOP = 0
@@ -23,33 +25,35 @@ class BettingAction:
 
 
 class BettingSystem:
-    def __init__(self, num_players: int, initial_stack: int = 1000):
+    def __init__(self, num_players: int, players: List[Player],  initial_stack: int = 1000):
         self.num_players = num_players
         self.small_blind = 5
         self.big_blind = 10
         self.min_raise = self.big_blind
         self.current_pot = 0
         self.current_bet = 0
-        self.player_stacks = [initial_stack] * num_players
+        for player in players:
+            player.stack = initial_stack
         self.player_bets = [0] * num_players
         self.betting_history = []
 
-    def start_new_round(self):
+    def start_new_round(self, players: List[Player]):
         """Start a new betting round"""
         self.current_pot = 0
         self.current_bet = 0
         self.player_bets = [0] * self.num_players
-        self.post_blinds()
+        players[:] = players[1:] + players[:1]
+        self.post_blinds(players=players)
 
-    def post_blinds(self):
+    def post_blinds(self, players: List[Player]):
         """Post small and big blinds"""
         # Small blind
-        self.player_stacks[0] -= self.small_blind
+        players[0].stack -= self.small_blind
         self.player_bets[0] = self.small_blind
         self.current_pot += self.small_blind
 
         # Big blind
-        self.player_stacks[1] -= self.big_blind
+        players[1].stack -= self.big_blind
         self.player_bets[1] = self.big_blind
         self.current_pot += self.big_blind
         self.current_bet = self.big_blind

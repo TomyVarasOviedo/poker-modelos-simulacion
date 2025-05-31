@@ -52,10 +52,10 @@ class PokerGame:
     community_cards: List[Card]
     players: List[Player]
 
-    def __init__(self, num_players, initial_stack=1000):
+    def __init__(self, num_players: int):
         self.num_players = num_players
         self.deck = Deck()
-        self.betting_system = BettingSystem(num_players, initial_stack)
+        self.betting_system = BettingSystem(num_players, 1000)
         self.current_round = BettingRound.PREFLOP
         self.community_cards = []
 
@@ -63,15 +63,17 @@ class PokerGame:
         self.players = []
         strategies = {
             "Conservative": ConservativeStrategy(),
-            "Random": RandomStrategy(),
             "Aggressive": AggressiveStrategy(),
             "Bluffing": BluffingStrategy(),
             "Tight": TightStrategy(),
+            "Random": RandomStrategy()
         }
-        print(strategies.values())
         # Add only the number of players requested
         for strategy in strategies.values():
-            self.players.append(Player(strategy=strategy))
+            if len(self.players) < self.num_players:
+                self.players.append(Player(strategy=strategy, player_hands=[], stack=0))
+            else:
+                break
 
     def simulate_game(self):
         """
@@ -107,13 +109,14 @@ class PokerGame:
         self._handle_betting_round()
 
         # Evaluate hands and determine winner
-        hand_strengths = []
-        for hand in self.players_hands:
-            all_cards = hand + self.community_cards
-            score = self.calculate_hand_score(all_cards)
-            hand_strengths.append(score)
+        hand_strengths = {}
+        for player in self.players:
+            for hand in player.player_hands:
+                all_cards = hand + self.community_cards
+                score = self.calculate_hand_score(all_cards)
+                hand_strengths.update({player: score})
 
-        winner = int(hand_strengths.index(max(hand_strengths)))
+        winner = int((max(hand_strengths.values())))
         pot_size = self.betting_system.get_pot_size()
 
         # Winner takes the pot
