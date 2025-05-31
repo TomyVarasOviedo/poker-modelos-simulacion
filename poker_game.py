@@ -112,32 +112,26 @@ class PokerGame:
         for player in self.players:
             all_cards = player.player_hands + self.community_cards
             score = self.calculate_hand_score(all_cards)
-            hand_strengths.update({player.strategy_name: score})
+            hand_strengths[player.strategy_name] = score
 
-        winner = max(hand_strengths, key=hand_strengths.get)
-        winner_index = -1
-        for player in self.players:
-            if player.strategy_name == winner:
-                winner_index = self.players.index(player)
-                break
-
-        if winner_index == -1:
-            raise ValueError("Winner not found in player list")
+        max_score = max(hand_strengths.values())
+        winners = [name for name, score in hand_strengths.items() if score == max_score]
         
         #Calculate pot size
-        pot_size = self.betting_system.get_pot_size()        
+        pot_size = self.betting_system.get_pot_size()
+        pot_share = pot_size // len(winners) if winners else 0       
 
         # Update player profiles with game results
-        for player in self.players:
-            position = self._get_position(winner_index)
+        for i, player in enumerate(self.players):
+            position = self._get_position(i)
             profit = player.get_player_stack() - 1000
-            is_winner = player.strategy_name == winner
+            is_winner = player.strategy_name in winners
 
             # Update basic stats
             player.stats["hands_dealt"] += 1
             player.stats["hands_played"] += 1
             if is_winner:
-                player.stack += pot_size
+                player.stack += pot_share
                 player.stats["hands_won"] += 1
             player.stats["total_profit"] += profit
 
@@ -151,10 +145,9 @@ class PokerGame:
                 player.stats["bluffs_attempted"] += 1
                 if self._was_bluff_successful(player):
                     player.stats["bluffs_successful"] += 1
-        print(winner)
         return {
-            "winner": winner,
-            "players_srategies": [player.strategy_name for player in self.players],
+            "winner": winners,
+            "players_strategies": [player.strategy_name for player in self.players],
             "profits": [player.get_player_stack() - 1000 for player in self.players],
             "hand_strengths": hand_strengths,
             "betting_history": self.betting_system.get_betting_history(),
@@ -315,27 +308,47 @@ class PokerGame:
         value_counts = Counter(values)
 
         value_map = {'J': '11', 'Q': '12', 'K': '13', 'A': '14'}
-        numeric_values = [value_map.get(v, v) for v in values]
-        numeric_values = [int(v) for v in numeric_values]
-        numeric_values.sort()
 
+        # Convert all values to numeric strings, then to int for sorting and comparison
+        numeric_values = [int(value_map.get(v, v)) for v in values]
+        numeric_values.sort(reverse=True)  # Highest first for tiebreakers
+
+        # Straight flush
         if len(set(suits)) == 1 and self.is_straight(numeric_values):
-            return 9
+            return (9, numeric_values)
+        # Four of a kind
         if 4 in value_counts.values():
-            return 8
+            quad = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 4)
+            kicker = max(v for v in numeric_values if v != quad)
+            return (8, [quad, kicker])
+        # Full house
         if 3 in value_counts.values() and 2 in value_counts.values():
-            return 7
+            trips = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 3)
+            pair = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2)
+            return (7, [trips, pair])
+        # Flush
         if len(set(suits)) == 1:
-            return 6
+            return (6, numeric_values)
+        # Straight
         if self.is_straight(numeric_values):
-            return 5
+            return (5, numeric_values)
+        # Three of a kind
         if 3 in value_counts.values():
-            return 4
+            trips = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 3)
+            kickers = sorted((v for v in numeric_values if v != trips), reverse=True)
+            return (4, [trips] + kickers)
+        # Two pair
         if list(value_counts.values()).count(2) == 2:
-            return 3
+            pairs = sorted((int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2), reverse=True)
+            kicker = max(v for v in numeric_values if v not in pairs)
+            return (3, pairs + [kicker])
+        # One pair
         if 2 in value_counts.values():
-            return 2
-        return 1
+            pair = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2)
+            kickers = sorted((v for v in numeric_values if v != pair), reverse=True)
+            return (2, [pair] + kickers)
+        # High card
+        return (1, numeric_values)
 
     def is_straight(self, values):
         if len(values) < 5:
@@ -369,9 +382,10 @@ class PokerGame:
         """
         actions = self.betting_system.get_betting_history()
         hand_strength = self.calculate_hand_score(player.player_hands)
+        hand_rank = hand_strength[0]
         return any(action.player == player and
                    action.action_type == "raise" and
-                   hand_strength < 5
+                   hand_rank < 5
                    for action in actions)
 
     def _was_bluff_successful(self, player: Player) -> bool:
