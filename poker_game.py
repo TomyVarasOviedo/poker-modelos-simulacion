@@ -154,12 +154,13 @@ class PokerGame:
         print(winner)
         return {
             "winner": winner,
-            "players": [player.strategy_name for player in self.players],
+            "players_srategies": [player.strategy_name for player in self.players],
             "profits": [player.get_player_stack() - 1000 for player in self.players],
             "hand_strengths": hand_strengths,
             "betting_history": self.betting_system.get_betting_history(),
             "player_stats": [profile.stats for profile in self.players],
-            "strategies": [profile.strategy_name for profile in self.players]
+            "strategies": [profile.strategy_name for profile in self.players],
+            "players": self.players,
         }
 
     def _handle_betting_round(self):
