@@ -186,9 +186,10 @@ class PokerGame:
         self.deck.shuffle()
 
         # Initialize player hands if not already done
-        if not self.players_hands:
-            self.players_hands = [self.deck.deal(
-                2) for _ in range(self.num_players)]
+        for player in self.players:
+            if not player.player_hands:
+                player.player_hands = [self.deck.deal(2)
+                                        for _ in range(self.num_players)]
 
         sims_per_thread = num_simulations // num_threads
 
@@ -197,13 +198,13 @@ class PokerGame:
 
             for _ in range(batch_size):
                 temp_deck = Deck()  # Create fresh deck for each simulation
-
-                # Remove known cards
-                for hand in self.players_hands:
-                    for card in hand:
+                for player in self.players:
+                    # Remove known cards
+                    for hand in player.player_hands:
+                        for card in hand:
+                            temp_deck.remove_card(card)
+                    for card in community_cards:
                         temp_deck.remove_card(card)
-                for card in community_cards:
-                    temp_deck.remove_card(card)
 
                 # Deal remaining community cards
                 remaining = 5 - len(community_cards)
