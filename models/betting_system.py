@@ -14,7 +14,7 @@ class BettingRound(Enum):
 
 @dataclass
 class BettingAction:
-    player_id: int
+    player: Player
     action_type: str
     amount: int
 
@@ -58,7 +58,7 @@ class BettingSystem:
         self.current_pot += self.big_blind
         self.current_bet = self.big_blind
 
-    def handle_action(self, player_id: int, action: str, amount: int = 0) -> bool:
+    def handle_action(self, player: Player, player_idx: int, action: str, amount: int = 0) -> bool:
         """
         Handle a player's betting action
 
@@ -74,28 +74,28 @@ class BettingSystem:
             return False
 
         if action == 'fold':
-            self.betting_history.append(BettingAction(player_id, 'fold', amount))
+            self.betting_history.append(BettingAction(player, 'fold', amount))
             return True
         elif action == 'call':
-            call_amount = self.current_bet - self.player_bets[player_id]
-            if call_amount > self.player_stacks[player_id]:
+            call_amount = self.current_bet - self.player_bets[player_idx]
+            if call_amount > player.stack:
                 return False
-            self.player_stacks[player_id] -= call_amount
-            self.player_bets[player_id] += call_amount
+            player.stack -= call_amount
+            self.player_bets[player_idx] += call_amount
             self.current_pot += call_amount
             self.betting_history.append(
-                BettingAction(player_id, 'call', call_amount))
+                BettingAction(player, 'call', call_amount))
             return True
         elif action == 'raise':
-            if amount < self.min_raise or amount > self.player_stacks[player_id]:
+            if amount < self.min_raise or amount > player.stack:
                 return False
-            self.player_stacks[player_id] -= amount
-            self.player_bets[player_id] += amount
+            player.stack -= amount
+            self.player_bets[player_idx] += amount
             self.current_pot += amount
             self.current_bet = amount
             self.min_raise = amount * 2
             self.betting_history.append(
-                BettingAction(player_id, 'raise', amount))
+                BettingAction(player, 'raise', amount))
             return True
 
     def get_pot_size(self) -> int:
@@ -106,18 +106,6 @@ class BettingSystem:
             - int: Current pot size
         """
         return self.current_pot
-
-    def get_player_stack(self, player_id: int) -> int:
-        """
-        Get player's remaining stack
-
-        Args:
-            - player_id (int): ID of the player
-
-        Returns:
-            - int: Remaining stack of the player
-        """
-        return self.player_stacks[player_id]
 
     def get_min_raise(self) -> int:
         """

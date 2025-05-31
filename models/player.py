@@ -59,3 +59,15 @@ class Player:
         if self.stats["bluffs_attempted"] == 0:
             return 0.0
         return self.stats["bluffs_successful"] / self.stats["bluffs_attempted"]
+    
+    def get_player_stack(self) -> int:
+        """
+        Get player's remaining stack
+
+        Args:
+            - player_id (int): ID of the player
+
+        Returns:
+            - int: Remaining stack of the player
+        """
+        return self.stack
