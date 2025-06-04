@@ -6,7 +6,6 @@ from models.Card import Card
 @dataclass
 class Player:
     strategy: BasePokerStrategy
-    strategy_name: str
     player_hands: List[Card]
     stack: int
     stats: Dict = field(default_factory=lambda: {

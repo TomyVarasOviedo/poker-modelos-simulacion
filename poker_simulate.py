@@ -15,9 +15,10 @@ class PokerSimulator:
     def __init__(self, config: SimulationConfig):
         self.config = config
 
-    def initialize_game(self, game) -> None:
+    def initialize_game(self) -> None:
         """Initialize game state with fresh deck and hands"""
-        [game.deck.deal(2) for _ in range(self.config.num_players)]
+        self.game = PokerGame(self.config.num_players)
+        [self.game.deck.deal(2) for _ in range(self.config.num_players)]
 
     def run_games_batch(self, num_games: int) -> list:
        """Run a batch of games in a single thread and return the results list."""
@@ -47,7 +48,8 @@ class PokerSimulator:
             )
             
             # Gather betting statistics from sample games
-            self.run_sample_games()
+            # TODO: Implement sample games functionality
+            # self.run_sample_games()
             
             return results
 

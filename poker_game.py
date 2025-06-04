@@ -66,7 +66,7 @@ class PokerGame:
         
         # Initialize players and their hands
         for strategy in strategies.values():
-            player = Player(strategy=strategy, player_hands=[])
+            player = Player(strategy=strategy, player_hands=[], stack=1000)  # Initialize with a default stack of 1000
             self.players.append(player)
             self.players_hands.append([])
 
