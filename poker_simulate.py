@@ -1,17 +1,7 @@
-import random
-from collections import Counter
-from itertools import combinations
-from typing import Dict, List, Optional
-from models.Card import Card
+from typing import Dict
 from poker_game import PokerGame
-from strategies.ConservativeStrategy import ConservativeStrategy
-from strategies.AggressiveStrategy import AggressiveStrategy
-from strategies.BluffingStrategy import BluffingStrategy
-from strategies.TightStrategy import TightStrategy
-from strategies.RandomStrategy import RandomStrategy
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 @dataclass
 class SimulationConfig:
@@ -24,21 +14,19 @@ class SimulationConfig:
 class PokerSimulator:
     def __init__(self, config: SimulationConfig):
         self.config = config
-        self.game = PokerGame(config.num_players)
 
-    def initialize_game(self) -> None:
+    def initialize_game(self, game) -> None:
         """Initialize game state with fresh deck and hands"""
-        [self.game.deck.deal(2) for _ in range(self.config.num_players)]
+        [game.deck.deal(2) for _ in range(self.config.num_players)]
 
-    def run_sample_games(self) -> None:
-        """
-        Run sample games to gather betting statistics
-        """
-        for _ in range(self.config.num_games):
-            try:
-                self.game.simulate_game()
-            except Exception as e:
-                print(f"Warning: Sample game failed: {str(e)}")
+    def run_games_batch(self, num_games: int) -> list:
+       """Run a batch of games in a single thread and return the results list."""
+       game = PokerGame(self.config.num_players)
+       batch_results = []
+       for _ in range(num_games):
+           result = game.simulate_game()
+           batch_results.append(result)
+       return batch_results
 
     def simulate(self) -> Dict:
         """

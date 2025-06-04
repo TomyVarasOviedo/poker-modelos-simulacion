@@ -1,7 +1,6 @@
 from typing import List
 from models.Card import Card
 from models.betting_system import BettingSystem, BettingRound
-from models.player_profile import PlayerProfile
 from models.player import Player
 from collections import Counter
 import random
@@ -48,11 +47,9 @@ class PokerGame:
     players: List[Player]
     players_hands: List[List[Card]]
 
-    def __init__(self, num_players, initial_stack=1000):
+    def __init__(self, num_players: int):
         self.num_players = num_players
         self.deck = Deck()
-        self.betting_system = BettingSystem(num_players, initial_stack)
-        self.current_round = BettingRound.PREFLOP
         self.community_cards = []
         self.players_hands = [] 
 
@@ -60,10 +57,10 @@ class PokerGame:
         self.players = []
         strategies = {
             "Conservative": ConservativeStrategy(),
-            "Random": RandomStrategy(),
             "Aggressive": AggressiveStrategy(),
             "Bluffing": BluffingStrategy(),
             "Tight": TightStrategy(),
+            "Random": RandomStrategy()
         }
         print(strategies.values())
         
@@ -153,22 +150,40 @@ class PokerGame:
         numeric_values.sort()
 
         if len(set(suits)) == 1 and self.is_straight(numeric_values):
-            return 9
+            return (9, numeric_values)
+        # Four of a kind
         if 4 in value_counts.values():
-            return 8
+            quad = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 4)
+            kicker = max(v for v in numeric_values if v != quad)
+            return (8, [quad, kicker])
+        # Full house
         if 3 in value_counts.values() and 2 in value_counts.values():
-            return 7
+            trips = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 3)
+            pair = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2)
+            return (7, [trips, pair])
+        # Flush
         if len(set(suits)) == 1:
-            return 6
+            return (6, numeric_values)
+        # Straight
         if self.is_straight(numeric_values):
-            return 5
+            return (5, numeric_values)
+        # Three of a kind
         if 3 in value_counts.values():
-            return 4
+            trips = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 3)
+            kickers = sorted((v for v in numeric_values if v != trips), reverse=True)
+            return (4, [trips] + kickers)
+        # Two pair
         if list(value_counts.values()).count(2) == 2:
-            return 3
+            pairs = sorted((int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2), reverse=True)
+            kicker = max(v for v in numeric_values if v not in pairs)
+            return (3, pairs + [kicker])
+        # One pair
         if 2 in value_counts.values():
-            return 2
-        return 1
+            pair = max(int(value_map.get(k, k)) for k, v in value_counts.items() if v == 2)
+            kickers = sorted((v for v in numeric_values if v != pair), reverse=True)
+            return (2, [pair] + kickers)
+        # High card
+        return (1, numeric_values)
 
     def is_straight(self, values):
         if len(values) < 5:

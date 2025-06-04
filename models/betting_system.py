@@ -2,6 +2,8 @@ from typing import Dict, List
 from dataclasses import dataclass
 from enum import Enum
 
+from models.player import Player
+
 
 class BettingRound(Enum):
     PREFLOP = 0
@@ -12,30 +14,31 @@ class BettingRound(Enum):
 
 @dataclass
 class BettingAction:
-    player_id: int
+    player: Player
     action_type: str
     amount: int
 
-    def __init__ (self, player_id: int, action_type: str, amount: int):
-        self.player_id = player_id
+    def __init__ (self, player: Player, action_type: str, amount: int):
+        self.player = player
         self.action_type = action_type
         self.amount = amount
 
 
 class BettingSystem:
-    def __init__(self, num_players: int, initial_stack: int = 1000):
+    def __init__(self, num_players: int, players: List[Player],  initial_stack: int = 1000):
         self.num_players = num_players
         self.small_blind = 5
         self.big_blind = 10
         self.min_raise = self.big_blind
         self.current_pot = 0
         self.current_bet = 0
-        self.player_stacks = [initial_stack] * num_players
+        for player in players:
+            player.stack = initial_stack
         self.player_bets = [0] * num_players
         self.betting_history = {}
         self.folded_players = [False] * num_players
 
-    def start_new_round(self):
+    def start_new_round(self, players: List[Player]):
         """Start a new betting round"""
         self.current_pot = 0
         self.current_bet = 0
@@ -44,20 +47,20 @@ class BettingSystem:
         self.betting_history = {}
         self.post_blinds()
 
-    def post_blinds(self):
+    def post_blinds(self, players: List[Player]):
         """Post small and big blinds"""
         # Small blind
-        self.player_stacks[0] -= self.small_blind
+        players[0].stack -= self.small_blind
         self.player_bets[0] = self.small_blind
         self.current_pot += self.small_blind
 
         # Big blind
-        self.player_stacks[1] -= self.big_blind
+        players[1].stack -= self.big_blind
         self.player_bets[1] = self.big_blind
         self.current_pot += self.big_blind
         self.current_bet = self.big_blind
 
-    def handle_action(self, player_id: int, action: str, amount: int = 0) -> bool:
+    def handle_action(self, player: Player, player_idx: int, action: str, amount: int = 0) -> bool:
         """
         Handle a player's betting action
 
@@ -88,19 +91,19 @@ class BettingSystem:
             self.betting_history[current_round][player_id] = {'action': 'check', 'amount': 0}
             return True
         elif action == 'call':
-            call_amount = self.current_bet - self.player_bets[player_id]
-            if call_amount > self.player_stacks[player_id]:
+            call_amount = self.current_bet - self.player_bets[player_idx]
+            if call_amount > player.stack:
                 return False
-            self.player_stacks[player_id] -= call_amount
-            self.player_bets[player_id] += call_amount
+            player.stack -= call_amount
+            self.player_bets[player_idx] += call_amount
             self.current_pot += call_amount
             self.betting_history[current_round][player_id] = {'action': 'call', 'amount': call_amount}
             return True
         elif action == 'raise':
-            if amount < self.min_raise or amount > self.player_stacks[player_id]:
+            if amount < self.min_raise or amount > player.stack:
                 return False
-            self.player_stacks[player_id] -= amount
-            self.player_bets[player_id] += amount
+            player.stack -= amount
+            self.player_bets[player_idx] += amount
             self.current_pot += amount
             self.current_bet = self.player_bets[player_id]
             self.min_raise = amount
@@ -115,18 +118,6 @@ class BettingSystem:
             - int: Current pot size
         """
         return self.current_pot
-
-    def get_player_stack(self, player_id: int) -> int:
-        """
-        Get player's remaining stack
-
-        Args:
-            - player_id (int): ID of the player
-
-        Returns:
-            - int: Remaining stack of the player
-        """
-        return self.player_stacks[player_id]
 
     def get_min_raise(self) -> int:
         """

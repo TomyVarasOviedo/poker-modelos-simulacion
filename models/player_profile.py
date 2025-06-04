@@ -18,5 +18,3 @@ class PlayerProfile:
             "late": {"played": 0, "won": 0}
         }
     })
-
-    
