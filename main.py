@@ -23,3 +23,4 @@ if __name__ == "__main__":
         run_console_mode()
     else:
         run_gui_mode()
+ 

@@ -20,6 +20,11 @@ class Player:
             "late": {"played": 0, "won": 0}
         }
     })
+    
+    @property
+    def strategy_name(self) -> str:
+        """Get the name of the strategy being used by this player"""
+        return self.strategy.__class__.__name__
 
     def get_win_rate(self) -> float:
         """

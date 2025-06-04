@@ -49,16 +49,24 @@ class PokerSimulator:
         """
         try:
             self.initialize_game()
-            # Run Monte Carlo probability calculation
-            results = self.game.monte_carlo_probability(community_cards=[
-            ], num_simulations=self.config.num_games, num_threads=self.config.num_threads)
-           # Gather betting statistics
+            
+            # Run Monte Carlo probability calculation with empty community cards
+            # This simulates from the beginning of a hand (preflop)
+            results = self.game.monte_carlo_probability(
+                community_cards=[],  # Start with no community cards
+                num_simulations=self.config.num_games,
+                num_threads=self.config.num_threads
+            )
+            
+            # Gather betting statistics from sample games
             self.run_sample_games()
-
+            
             return results
 
         except Exception as e:
             print(f"Error in simulation: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
         return self._generate_error_results()
 
@@ -71,18 +79,22 @@ class PokerSimulator:
             "strategies": []
         }
 
-    def run_threaded_simulation(self) -> Dict:
+    def run_threaded_simulation(self, num_games=None, num_threads=None) -> Dict:
         """
         Run poker simulation with parallel processing
 
         Args:
-            - num_games (int): Number of games to simulate
-            - num_threads (int): Number of threads to use
+            - num_games (int): Number of games to simulate (overrides config)
+            - num_threads (int): Number of threads to use (overrides config)
         Returns:
             - Dict: Simulation results
         """
-
-        #simulator = PokerSimulator(config)
+        # Update configuration if parameters are provided
+        if num_games is not None:
+            self.config.num_games = num_games
+        if num_threads is not None:
+            self.config.num_threads = num_threads
+            
         return self.simulate()
 
 
