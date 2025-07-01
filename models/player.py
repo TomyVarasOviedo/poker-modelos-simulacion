@@ -1,73 +1,39 @@
-from dataclasses import dataclass, field
-from typing import Dict, List
 from strategies.BasePokerStrategy import BasePokerStrategy
-from models.Card import Card
-
-@dataclass
 class Player:
-    strategy: BasePokerStrategy
-    strategy_name: str
-    player_hands: List[Card]
-    stack: int
-    stats: Dict = field(default_factory=lambda: {
-        "hands_dealt": 0,
-        "hands_played": 0,
-        "hands_won": 0,
-        "total_profit": 0.0,
-        "bluffs_attempted": 0,
-        "bluffs_successful": 0,
-        "position_stats": {
-            "early": {"played": 0, "won": 0},
-            "middle": {"played": 0, "won": 0},
-            "late": {"played": 0, "won": 0}
+    def __init__(self, strategy_name, strategy):
+        self.strategy_name = strategy_name              # Nombre legible: "Tight-Aggressive", etc.
+        self.strategy: BasePokerStrategy = strategy               # Instancia de la estrategia (objeto con método de decisión)
+        self.player_hand = []                           # Lista de cartas (se definirá con clase Card)
+        self.stats = {
+            "hands_dealt": 0,
+            "hands_played": 0,
+            "hands_won": 0,
         }
-    })
 
+    def reset_hand(self):
+        """Limpia la mano del jugador (para repartir una nueva)."""
+        self.player_hand = []
+
+    def update_stat(self, key, amount=1):
+        """Incrementa una estadística básica."""
+        if key in self.stats:
+            self.stats[key] += amount
+
+    def get_win_rate_total(self) -> float:
+        """
+        Calcula el win rate general del jugador (hands_won / hands_played).
+        """
+        if self.stats["hands_dealt"] == 0:
+            return 0.0
+        return self.stats["hands_won"] / self.stats["hands_dealt"]
+    
     def get_win_rate(self) -> float:
         """
-        This method calculates the win rate of the player.
-
-        Returns:
-            - float: The win rate of the player as a percentage.
+        Calcula el win rate general del jugador (hands_won / hands_played).
         """
         if self.stats["hands_played"] == 0:
             return 0.0
         return self.stats["hands_won"] / self.stats["hands_played"]
 
-    def get_position_win_rate(self, position: str) -> float:
-        """
-        This method calculates the win rate of the player based on their position.
-
-        Args:
-            - position (str): The position of the player ('early', 'middle', 'late').
-
-        Returns:
-            - float: The win rate of the player in the specified position as a percentage.
-        """
-        pos_stats = self.stats["position_stats"][position]
-        if pos_stats["played"] == 0:
-            return 0.0
-        return pos_stats["won"] / pos_stats["played"]
-
-    def get_bluff_success_rate(self) -> float:
-        """
-        This method calculates the bluff success rate of the player.
-
-        Returns:
-            - float: The bluff success rate of the player as a percentage.
-        """
-        if self.stats["bluffs_attempted"] == 0:
-            return 0.0
-        return self.stats["bluffs_successful"] / self.stats["bluffs_attempted"]
-    
-    def get_player_stack(self) -> int:
-        """
-        Get player's remaining stack
-
-        Args:
-            - player_id (int): ID of the player
-
-        Returns:
-            - int: Remaining stack of the player
-        """
-        return self.stack
+    def __repr__(self):
+        return f"Player({self.strategy_name})"

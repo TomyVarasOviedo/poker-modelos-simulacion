@@ -1,36 +1,37 @@
-from .BasePokerStrategy import BasePokerStrategy
+from strategies.BasePokerStrategy import BasePokerStrategy
+from models.Card import Card
+from typing import List
 import random
 
-
 class BluffingStrategy(BasePokerStrategy):
-    def __init__(self):
-        super().__init__()
-
-    def make_decision(self, hand, community_cards, pot_size, current_bet, player_stack):
-        """
-        This function implements the desicions according to actual hand and community cards
-
-        Args:
-            - hand: list of Cards
-            - community_cards: list of Cards
-            - pot_size: float
-            - current_bet: float
-            - player_stack: float
-
-        Returns:
-            - desicion [String]: raise, call or fold
-            - percentage_bet? [float]: ???
-        """
-        import random
-        hand_strength = self.evaluate_hand_strength(hand, community_cards)
-        pot_odds = self._calculate_pot_odds(pot_size, current_bet)
-
-        # Bluffing behavior: Randomly raise even with weak hands
-        if hand_strength > 0.7:
-            return 'raise', min(current_bet * 3, player_stack)
-        elif hand_strength > 0.5 and pot_odds < 0.4:
-            return 'call', current_bet
-        elif random.random() < 0.25 and pot_odds < 0.3:
-            return 'raise', min(current_bet * 2, player_stack)  # Bluff more often
+    def make_decision(self, hand: List[Card], community_cards: List[Card], phase: str) -> str:
+        strength = 0.0
+        
+        if phase == "preflop":
+            strength = self.evaluate_preflop_strength(hand)
         else:
-            return 'fold', 0
+            strength = self.evaluate_hand_strength(hand, community_cards)
+
+        thresholds = {
+            "preflop": 0.35,
+            "flop": 0.45,
+            "turn": 0.5,
+            "river": 0.55,
+        }
+
+        bluff_chances = {
+            "preflop": 0.15,
+            "flop": 0.2,
+            "turn": 0.25,
+            "river": 0.3,
+        }
+
+        # Raise por fuerza real
+        if strength >= 0.85:
+            return "raise"
+
+        # Bluff si no alcanza el threshold
+        if strength < thresholds[phase] and random.random() < bluff_chances[phase]:
+            return "raise"
+
+        return "call" if strength >= thresholds[phase] else "fold"

@@ -1,31 +1,27 @@
-from .BasePokerStrategy import BasePokerStrategy
-
+from strategies.BasePokerStrategy import BasePokerStrategy
+from models.Card import Card
+from typing import List
 
 class ConservativeStrategy(BasePokerStrategy):
-    def make_decision(self, hand, community_cards, pot_size, current_bet, player_stack):
-        """
-        This function implements the decisions according to actual hand and community cards
+    def make_decision(self, hand: List[Card], community_cards: List[Card], phase: str) -> str:
+        strength = 0.0
 
-        Args:
-            - hand: list of Cards
-            - community_cards: list of Cards
-            - pot_size: float
-            - current_bet: float
-            - player_stack: float
+        if phase == "preflop":
+            strength = self.evaluate_preflop_strength(hand)
+        else:
+            strength = self.evaluate_hand_strength(hand, community_cards)
 
-        Returns:
-            - decision [String]: raise, call or fold
-            - percentage_bet? [float]: amount to bet or call
-        """
-        hand_strength = self.evaluate_hand_strength(hand, community_cards)
-        pot_odds = self._calculate_pot_odds(pot_size, current_bet)
-        # Conservative play - only play strong hands
-        if hand_strength > 0.85:  # Very strong hands
-            return 'raise', min(current_bet * 2, player_stack)
-        elif hand_strength > 0.7 and pot_odds < 0.25:  # Strong hands with good odds
-            return 'call', current_bet
-        else:  # Fold everything else
-            return 'fold', 0
+        thresholds = {
+            "preflop": 0.65,   # Antes: 0.75 → más posibilidades de jugar
+            "flop": 0.55,     # Antes: 0.5 → más selectiva si sigue
+            "turn": 0.6,      # Antes: 0.55
+            "river": 0.65     # Antes: 0.6
+        }
 
-    def __init__(self):
-        super().__init__()
+        # Raise solo si tiene una mano MUY fuerte
+        if strength >= 0.85:
+            return "raise"
+        elif strength >= thresholds[phase]:
+            return "call"
+        else:
+            return "fold"

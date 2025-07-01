@@ -1,45 +1,50 @@
-from poker_game import PokerGame
-from poker_gui import PokerGUI
-import tkinter as tk
-import ttkbootstrap as ttk
+from PokerSimulationManager import PokerSimulationManager
 
-def run_console_mode():
-    final_result=[]
-    strategies = [
-                'Conservative',
-                "Aggressive",
-                "Bluffing",
-                "Tight",
-                "Random"
-    ]
+def mostrar_menu():
+    print("Estrategias disponibles:")
+    print("1. Tight-Aggressive")
+    print("2. Loose-Aggressive")
+    print("3. Conservative")
+    print("4. Bluffing")
 
-    profit_by_strategy = {strategy: 0 for strategy in strategies}
+def seleccionar_estrategia(jugador):
+    estrategias = {
+        "1": "Tight-Aggressive",
+        "2": "Loose-Aggressive",
+        "3": "Conservative",
+        "4": "Bluffing"
+    }
 
-    game = PokerGame(4)
-    results = game.simulate_game()
-    for winner in results['winner']:
-        final_result.append(winner)
-        results = game.simulate_game()
-    # Aggregate profit for each player by their strategy
-    for strat, profit in zip(results['players_strategies'], results['profits']):
-        profit_by_strategy[strat] += profit
+    while True:
+        print(f"\nSelecciona la estrategia para el {jugador}:")
+        mostrar_menu()
+        opcion = input("Ingresa el número de la estrategia: ").strip()
+        if opcion in estrategias:
+            return estrategias[opcion]
+        else:
+            print("Opción inválida. Intenta de nuevo.")
 
-    for strategy in strategies:
-        avg_profit = profit_by_strategy[strategy] / 10000
-        print(f"Strategy: {strategy}")
-        print(f"Win Rate: {final_result.count(strategy) / len(final_result) * 100:.2f}%")
-        print(f"Average Profit per Game: {avg_profit:.2f}")
-        
-def run_gui_mode():
-    # Use ttkbootstrap Window with theme
-    root = ttk.Window(themename="darkly")
-    app = PokerGUI(root)
-    root.mainloop()
+def main():
+    print("Simulador de Poker Heads-Up (Uno contra Uno)")
+
+    estrategia1 = seleccionar_estrategia("Jugador 1")
+    estrategia2 = seleccionar_estrategia("Jugador 2")
+
+    while True:
+        try:
+            num_partidas = int(input("\n¿Cuántas partidas deseas simular? (ej: 10000): "))
+            if num_partidas <= 0:
+                raise ValueError
+            break
+        except ValueError:
+            print("Por favor, ingresa un número entero válido.")
+
+    print(f"\nSimulando {num_partidas} partidas entre {estrategia1} y {estrategia2}...\n")
+
+    sim = PokerSimulationManager(estrategia1, estrategia2, num_partidas)
+    sim.run_simulation()
+    results = sim.get_results()
+    print(results)
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) > 1 and sys.argv[1] == '--console':
-        run_console_mode()
-    else:
-        run_gui_mode()
+    main()
