@@ -21,7 +21,7 @@ class Player:
 
     def get_win_rate_total(self) -> float:
         """
-        Calcula el win rate general del jugador (hands_won / hands_played).
+        Calcula el win rate general del jugador (hands_won / hands_dealt).
         """
         if self.stats["hands_dealt"] == 0:
             return 0.0

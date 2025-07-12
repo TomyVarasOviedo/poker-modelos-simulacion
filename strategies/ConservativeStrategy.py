@@ -12,10 +12,10 @@ class ConservativeStrategy(BasePokerStrategy):
             strength = self.evaluate_hand_strength(hand, community_cards)
 
         thresholds = {
-            "preflop": 0.65,   # Antes: 0.75 → más posibilidades de jugar
-            "flop": 0.55,     # Antes: 0.5 → más selectiva si sigue
-            "turn": 0.6,      # Antes: 0.55
-            "river": 0.65     # Antes: 0.6
+            "preflop": 0.65,  
+            "flop": 0.55,     
+            "turn": 0.6,      
+            "river": 0.65     
         }
 
         # Raise solo si tiene una mano MUY fuerte
