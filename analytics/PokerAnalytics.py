@@ -3,12 +3,30 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List
 import numpy as np
-from models.player_profile import PlayerProfile
+from models.Player import Player
 
 
 class PokerAnalytics:
     @staticmethod
     def create_dataframe(results: Dict) -> pd.DataFrame:
+        """
+        Convierte los resultados de la simulación en un DataFrame de pandas.
+        """
+        if not results or 'player_stats' not in results or 'strategies' not in results:
+            return pd.DataFrame({'Error': ['Invalid input data']})
+
+        data = []
+        for i, stats in enumerate(results["player_stats"]):
+            if not stats:
+                continue
+            data.append({
+                'Strategy': results["strategies"][i] if i < len(results["strategies"]) else 'Unknown',
+                'Hands Won': stats.get('hands_won', 0),
+                'Hands Played': stats.get('hands_played', 0),
+                'Win Rate': stats.get('win_rate', 0.0),
+                'Win Rate Total': stats.get('win_rate_total', 0.0),
+            })
+        return pd.DataFrame(data) if data else pd.DataFrame({'Error': ['No valid player data']})   
         """
         Convert simulation results to a pandas DataFrame with validation
 
@@ -29,20 +47,15 @@ class PokerAnalytics:
             # Set default values if stats are missing
             hands_played = stats.get('hands_played', 0)
             hands_won = stats.get('hands_won', 0)
-            total_profit = stats.get('total_profit', 0)
-            bluffs_attempted = stats.get('bluffs_attempted', 0)
-            bluffs_successful = stats.get('bluffs_successful', 0)
+            win_rate = stats.get('win_rate', 0.0)
+            win_rate_total = stats.get('win_rate_total', 0.0)
             
             data.append({
                 'Strategy': results["strategies"][i] if i < len(results["strategies"]) else 'Unknown',
                 'Hands Played': hands_played,
                 'Hands Won': hands_won,
-                'Win Rate': hands_won / max(1, hands_played) if hands_played > 0 else 0,
-                'Total Profit': total_profit,
-                'Avg Profit': total_profit / max(1, hands_played),
-                'Bluff Success': bluffs_successful / max(1, bluffs_attempted),
-                'Wins': hands_won,  # Added for GUI compatibility
-                'Std Dev': 0  # Placeholder for GUI compatibility
+                'Win Rate': win_rate,
+                'Win Rate Total': win_rate_total,
             })
         
         return pd.DataFrame(data) if data else pd.DataFrame({'Error': ['No valid player data']})
@@ -70,8 +83,8 @@ class PokerAnalytics:
                 strategy_df = df[df['Strategy'] == strategy]
                 summary_data[strategy] = {
                     'Win Rate': strategy_df['Win Rate'].mean(),
-                    'Avg Profit': strategy_df['Avg Profit'].mean(),
-                    'Bluff Success': strategy_df['Bluff Success'].mean()
+                    'Win Rate Total': strategy_df['Win Rate Total'].mean(),
+                    'Hands Played': strategy_df['Hands Played'].mean()
                 }
             
             # Convert to DataFrame with strategies as index
@@ -138,12 +151,12 @@ class PokerAnalytics:
             return None
 
     @staticmethod
-    def analyze_player_performance(player_profiles: List[PlayerProfile]) -> pd.DataFrame:
+    def analyze_player_performance(player_profiles: List[Player]) -> pd.DataFrame:
         """
         Analyze detailed player performance with validation
 
         Args:
-            - player_profiles (List[PlayerProfile]): List of player profiles to analyze.
+            - player_profiles (List[Player]): List of player profiles to analyze.
 
         Returns:
             - pd.DataFrame: DataFrame containing detailed player performance statistics.

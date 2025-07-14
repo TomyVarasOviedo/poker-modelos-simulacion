@@ -16,7 +16,6 @@ import json
 import os
 from PokerSimulationManager import PokerSimulationManager
 from analytics.PokerAnalytics import PokerAnalytics
-from gui.PokerVisualizer import PokerVisualizer
 
 strategies = ["tight-aggressive","loose-aggressive","conservative","bluffing"]
 
@@ -24,7 +23,6 @@ strategies = ["tight-aggressive","loose-aggressive","conservative","bluffing"]
 class SimulationConfig:
     num_players: int = 5
     num_games: int = 1000
-    num_threads: int = 4
     sample_games: int = 100
 
 class PokerGUI:
@@ -111,13 +109,6 @@ class PokerGUI:
         # Threads input with validation
         threads_frame = ttk.Frame(input_frame)
         threads_frame.pack(side=LEFT, padx=20)
-
-        ttk.Label(threads_frame, text="Number of Threads",
-                  font=("Helvetica", 10, "bold")).pack(anchor=W)
-        self.num_threads = ttk.Entry(threads_frame, width=5,
-                                     bootstyle="default")
-        self.num_threads.insert(0, "4")
-        self.num_threads.pack(pady=5)
 
         self.strategy1 =ttk.Combobox(threads_frame, values = strategies)
         self.strategy1.set("Strategy 1")
@@ -253,9 +244,11 @@ class PokerGUI:
             style='Subtitle.TLabel'
         ).pack(anchor=W, pady=(10, 5))
         self.stats_tree = ttk.Treeview(
-            self.stats_frame, columns=(
-                "Strategy", "Wins", "Win Rate", "Avg Profit", "Std Dev"),
-            show="headings")
+        self.stats_frame, columns=(
+            "Strategy", "Hands Won", "Hands Played", "Win Rate", "Win Rate Total"
+        ),
+        show="headings"
+)
         self._configure_treeview(self.stats_tree)
         self.stats_tree.pack(fill=BOTH, expand=YES)
 
@@ -270,18 +263,14 @@ class PokerGUI:
                 "Strategy",
                 "Hands Played",
                 "Win Rate",
-                "Total Profit",
-                "Bluff Rate",
-                "Position Stats"), show="headings", height=5)
+                "Win Rate Total"), show="headings", height=5)
         self._configure_treeview(self.player_stats_tree)
 
         # Adjust column widths for better visibility
         self.player_stats_tree.column("Strategy", width=100)
         self.player_stats_tree.column("Hands Played", width=100)
         self.player_stats_tree.column("Win Rate", width=80)
-        self.player_stats_tree.column("Total Profit", width=100)
-        self.player_stats_tree.column("Bluff Rate", width=80)
-        self.player_stats_tree.column("Position Stats", width=200)
+        self.player_stats_tree.column("Win Rate Total", width=100)
         self.player_stats_tree.pack(fill=X, pady=(0, 10))
 
         # Add Interactive Analysis tab
@@ -303,12 +292,11 @@ class PokerGUI:
 
     def _run_simulation(self):
             num_games = int(self.num_games.get())
-            num_threads = int(self.num_threads.get())
             strategy1_txt = self.strategy1.get()
             strategy2_txt = self.strategy2.get()
             
-            if num_games <= 0 or num_threads <= 0:
-                messagebox.showerror("Invalid Input", "Number of games and threads must be positive integers.")
+            if num_games <= 0:
+                messagebox.showerror("Invalid Input", "Number of games must be positive integers.")
                 return
             
             if strategy1_txt == strategy2_txt:
@@ -327,65 +315,12 @@ class PokerGUI:
             print(simulation.get_results())
             self._update_results(simulation.get_results())    
     # Update progress periodically during simulation
-    def update_progress(step, total_steps):
+    def update_progress(self, step, total_steps):
         progress_pct = int((step / total_steps) * 100)
         self.progress["value"] = progress_pct
         self.status_label.configure(text=f"Simulating... {progress_pct}% complete ({step}/{total_steps} games)")
         self.root.update_idletasks()
-            
-    # Start simulation in a separate thread to avoid freezing the UI
-    def run_simulation_thread():
-        try:
-            # Create simulator with config
-            simulate = PokerSimulator(config)
-                    
-            # Set up progress tracking
-            total_steps = num_games
-            progress_interval = max(1, total_steps // 20)  # Update progress ~20 times
-                    
-            # Define a callback to track simulation progress
-            class ProgressTracker:
-                def __init__(self):
-                    self.completed = 0
-                        
-                def update(self):
-                    self.completed += 1
-                    if self.completed % progress_interval == 0 or self.completed == total_steps:
-                           self.root.after(0, lambda: update_progress(self.completed, total_steps))
-                    
-                    # Create progress tracker
-                    tracker = ProgressTracker()
-                    tracker.root = self.root
-                    
-                    # Initial progress update
-                    self.root.after(0, lambda: update_progress(0, total_steps))
-                    
-                    # Run the actual simulation
-                    # In a real implementation, we would need to modify the simulator to call
-                    # the progress callback after each simulation, but for now we'll update at the end
-                    results = simulate.run_threaded_simulation()
-                    
-                    # Final progress update
-                    self.root.after(0, lambda: update_progress(total_steps, total_steps))
-                    
-                    # Update UI with results in the main thread
-                    self.root.after(0, lambda: self._update_results(results))
-        except Exception as e:
-            # Handle errors in the main thread
-            import traceback
-            traceback.print_exc()
-            self.root.after(0, lambda: self._handle_simulation_error(str(e)))
-            
-            # Start the simulation thread
-            import threading
-            simulation_thread = threading.Thread(target=run_simulation_thread)
-            simulation_thread.daemon = True  # Thread will exit when main program exits
-            simulation_thread.start()
-            
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter valid numbers for games and threads.")
-        except Exception as e:
-            self._handle_simulation_error(str(e))
+        
     
     def _handle_simulation_error(self, error_message):
         """Handle errors during simulation"""
@@ -926,39 +861,6 @@ class PokerGUI:
         # Draw the chart
         self.comparison_canvas.draw()
 
-    def _run_quick_simulation(self, num_games, num_threads):
-        # Create a simulation configuration
-        from poker_simulate import SimulationConfig
-        config = SimulationConfig(
-            num_players=4,  # Default number of players
-            num_games=num_games,
-            num_threads=num_threads,
-            sample_games=min(100, num_games)  # Use at most 100 games for sampling
-        )
-        
-        # Create simulator with config and run simulation
-        simulator = PokerSimulator(config)
-        results = simulator.run_threaded_simulation(num_games, num_threads) 
-        self.root.after(0, lambda: self._update_results(results))
-
-    def _start_quick_simulation(self):
-        # Get values from UI
-        try:
-            num_games = int(self.games_entry.get())
-            num_threads = int(self.threads_entry.get())
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Number of games and threads must be integers.")
-            return
-            
-        if num_games <= 0 or num_threads <= 0:
-            messagebox.showerror("Invalid Input", "Number of games and threads must be positive integers.")
-            return
-            
-        # Start the simulation thread
-        thread = threading.Thread(target=lambda: self._run_quick_simulation(num_games, num_threads))
-        thread.daemon = True
-        thread.start()
-
     def _setup_comparison_tab(self):
         """Setup the strategy comparison tab with side-by-side comparison"""
         # Create a frame for the comparison controls
@@ -1022,10 +924,8 @@ class PokerGUI:
                 player_stats.append({
                     'hands_played': stats.get('hands_played', 0),
                     'hands_won': stats.get('hands_won', 0),
-                    'total_profit': stats.get('total_profit', 0),
-                    'bluffs_attempted': stats.get('bluffs_attempted', 0),
-                    'bluffs_successful': stats.get('bluffs_successful', 0),
-                    'position_stats': stats.get('position_stats', {})
+                    'win_rate': stats.get('win_rate', 0.0),
+                    'win_rate_total': stats.get('win_rate_total', 0.0),
                 })
         results = {'strategies': strategies, 'player_stats': player_stats}
 
@@ -1057,6 +957,7 @@ class PokerGUI:
             for item in tree.get_children():
                 tree.delete(item)
 
+
         # Rellenar resumen de Win Rate
         if 'Win Rate' in summary_stats.columns:
             for strat in summary_stats.index:
@@ -1069,13 +970,14 @@ class PokerGUI:
 
         # Rellenar estadísticas detalladas
         for _, row in df.iterrows():
-            self.stats_tree.insert("", "end",
+            self.stats_tree.insert(
+                "", "end",
                 values=(
                     row['Strategy'],
                     row['Hands Won'],
-                    f"{row['Win Rate']:.1%}",
-                    f"${row['Avg Profit']:.2f}",
-                    f"${row['Total Profit']:.2f}"
+                    row['Hands Played'],
+                    f"{row['Win Rate']:.2%}",
+                    f"{row['Win Rate Total']:.2%}"
                 )
             )
 
@@ -1118,29 +1020,6 @@ class PokerGUI:
                     " | ".join(pos_list)
                 ))
 
-        # Dashboard interactivo
-        visualizer = PokerVisualizer()
-        fig = visualizer.create_interactive_dashboard(results)
-        html_path = "poker_analysis.html"
-        fig.write_html(html_path)
-        if hasattr(self, 'open_dashboard_btn'):
-            self.open_dashboard_btn.destroy()
-        self.open_dashboard_btn = ttk.Button(
-            self.analysis_frame,
-            text="Open Interactive Dashboard",
-            command=lambda: webbrowser.open(html_path),
-            bootstyle="info-outline"
-        )
-        self.open_dashboard_btn.pack(pady=20)
-
-        if hasattr(self, 'dashboard_label'):
-            self.dashboard_label.destroy()
-        self.dashboard_label = ttk.Label(
-            self.analysis_frame,
-            text="Click the button above to open the interactive analysis dashboard in your browser",
-            style='Subtitle.TLabel', wraplength=400
-        )
-        self.dashboard_label.pack(pady=10)
 
         # Rehabilitar controles
         self.start_btn.configure(state="normal")
@@ -1172,8 +1051,7 @@ class PokerGUI:
                 save_data = {
                     "results": self.current_results,
                     "parameters": {
-                        "num_games": self.num_games.get(),
-                        "num_threads": self.num_threads.get()
+                        "num_games": self.num_games.get()
                     }
                 }
                 json.dump(save_data, f, indent=2)
@@ -1207,10 +1085,6 @@ class PokerGUI:
             if "num_games" in parameters:
                 self.num_games.delete(0, tk.END)
                 self.num_games.insert(0, parameters["num_games"])
-                
-            if "num_threads" in parameters:
-                self.num_threads.delete(0, tk.END)
-                self.num_threads.insert(0, parameters["num_threads"])
             
             # Update UI with loaded results
             self._update_results(results)
@@ -1226,10 +1100,6 @@ class PokerGUI:
 
         ToolTip(self.num_games,
                 text="Number of poker games to simulate",
-                bootstyle="info-inverse")
-
-        ToolTip(self.num_threads,
-                text="Number of parallel processing threads",
                 bootstyle="info-inverse")
 
         ToolTip(self.start_btn,

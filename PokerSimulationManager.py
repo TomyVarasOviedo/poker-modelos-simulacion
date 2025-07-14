@@ -42,14 +42,14 @@ class PokerSimulationManager:
     def get_results(self):
         return {
             self.player1.strategy_name: {
-                "win-rate": self.player1.get_win_rate(),
+                "win_rate": self.player1.get_win_rate(),
                 "win_rate_total": self.player1.get_win_rate_total(),
                 "hands_won": self.player1.stats["hands_won"],
                 "hands_played": self.player1.stats["hands_played"],
                 "hands_dealt": self.player1.stats["hands_dealt"],
             },
             self.player2.strategy_name: {
-                "win-rate": self.player2.get_win_rate(),
+                "win_rate": self.player2.get_win_rate(),
                 "win_rate_total": self.player2.get_win_rate_total(),
                 "hands_won": self.player2.stats["hands_won"],
                 "hands_played": self.player2.stats["hands_played"],
