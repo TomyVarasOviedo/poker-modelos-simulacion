@@ -39,6 +39,8 @@ class PokerSimulationManager:
             if winner:
                 winner.stats["hands_won"] += 1
 
+            print(winner)
+
     def get_results(self):
         return {
             self.player1.strategy_name: {

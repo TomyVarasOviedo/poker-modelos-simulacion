@@ -30,9 +30,10 @@ class PokerGUI:
         self.root = root
         self.root.title("Poker Strategy Simulator")
         self.root.geometry("1400x900")
+        self.root.configure(bg="#181818")
 
         # Initialize style with ttkbootstrap
-        self.style = ttk.Style()
+        self.style = ttk.Style(theme="darkly")
         
         # On close the window close the terminal 
 
@@ -48,17 +49,29 @@ class PokerGUI:
                 pass
 
         # Configure custom styles
-        self.style.configure('Title.TLabel',
-                             font=('Helvetica', 24, 'bold'),
-                             foreground='#00bc8c')
-
-        self.style.configure('Subtitle.TLabel',
-                             font=('Helvetica', 12),
-                             foreground='#6c757d')
+        self.style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'), foreground='#00bc8c', background='#181818')
+        self.style.configure('Subtitle.TLabel', font=('Helvetica', 12), foreground='#6c757d', background='#181818')
 
         # Create header
-        header = ttk.Frame(self.root, padding="20 20 20 0")
+        header = ttk.Frame(self.root, padding="20 20 20 0", style="Dark.TFrame")
         header.pack(fill=X)
+        self.control_frame = ttk.LabelFrame(
+            self.root,
+            text="Simulation Controls",
+            padding=20,
+            bootstyle="default",
+            style="Dark.TLabelframe"
+        )
+        self.control_frame.pack(fill=X, padx=20, pady=(10, 20))
+
+        self.results_frame = ttk.LabelFrame(
+            self.root,
+            text="Simulation Results",
+            padding=20,
+            bootstyle="default",
+            style="Dark.TLabelframe"
+        )
+        self.results_frame.pack(fill=BOTH, expand=YES, padx=20, pady=(0, 20))
 
         ttk.Label(header, text="Poker Strategy Simulator",
                   style='Title.TLabel').pack(side=LEFT)
@@ -378,25 +391,14 @@ class PokerGUI:
         """Create statistics labels for a strategy"""
         # Calculate statistics
         win_rate = strategy_data['Win Rate'].mean()
-        total_profit = strategy_data['Total Profit'].sum()
-        avg_profit = strategy_data['Avg Profit'].mean()
-        bluff_success = strategy_data['Bluff Success'].mean() if 'Bluff Success' in strategy_data else 0
+        win_rate_total = strategy_data['Win Rate Total'].mean()
+        hands_played = strategy_data['Hands Played'].mean()
         
         # Create labels with statistics
         ttk.Label(parent_frame, text=f"Strategy: {strategy_name}", font=("TkDefaultFont", 12, "bold")).pack(anchor=W, pady=(0, 10))
         ttk.Label(parent_frame, text=f"Win Rate: {win_rate:.4f}").pack(anchor=W, pady=2)
-        ttk.Label(parent_frame, text=f"Total Profit: {total_profit:.2f}").pack(anchor=W, pady=2)
-        ttk.Label(parent_frame, text=f"Average Profit: {avg_profit:.2f}").pack(anchor=W, pady=2)
-        ttk.Label(parent_frame, text=f"Bluff Success Rate: {bluff_success:.4f}").pack(anchor=W, pady=2)
-        
-        # Add position statistics if available
-        if 'Position Stats' in strategy_data.columns:
-            ttk.Label(parent_frame, text="Position Performance:", font=("TkDefaultFont", 10, "bold")).pack(anchor=W, pady=(10, 5))
-            position_stats = strategy_data['Position Stats'].iloc[0] if not strategy_data.empty else {}
-            
-            for position, stats in position_stats.items():
-                if isinstance(stats, dict) and 'win_rate' in stats:
-                    ttk.Label(parent_frame, text=f"{position}: {stats['win_rate']:.4f}").pack(anchor=W, pady=1)
+        ttk.Label(parent_frame, text=f"Win Rate Total: {win_rate_total:.4f}").pack(anchor=W, pady=2)
+        ttk.Label(parent_frame, text=f"Hands Played: {hands_played}").pack(anchor=W, pady=2)
         
     def _setup_replayer_tab(self):
         """Setup the hand replayer tab with controls and display area"""
@@ -725,7 +727,7 @@ class PokerGUI:
         # Card background
         self.table_canvas.create_rectangle(
             x, y, x + width, y + height,
-            fill="white", outline="black"
+            fill="black", outline="black"
         )
         
         # Card value and suit
@@ -768,96 +770,55 @@ class PokerGUI:
         )
     
     def _create_radar_chart(self, strategy1, strategy2, strategy1_data, strategy2_data):
-        """Create a radar chart comparing two strategies"""
+        """Create a radar chart comparing two strategies using Win Rate, Win Rate Total, and Hands Played"""
         # Define metrics for comparison
-        metrics = ['Win Rate', 'Avg Profit', 'Bluff Success']
-        
-        # Add position metrics if available
-        position_metrics = []
-        if 'Position Stats' in strategy1_data.columns and not strategy1_data.empty:
-            position_stats = strategy1_data['Position Stats'].iloc[0]
-            for position in position_stats.keys():
-                if isinstance(position_stats[position], dict) and 'win_rate' in position_stats[position]:
-                    position_metrics.append(f"{position} Win Rate")
-        
-        all_metrics = metrics + position_metrics
-        
-        if not all_metrics:
-            messagebox.showinfo("Data Error", "No metrics available for comparison.")
-            return
-            
-        # Calculate values for each metric
+        metrics = ['Win Rate', 'Win Rate Total', 'Hands Played']
+
+        # Prepare values for each metric
         strategy1_values = []
         strategy2_values = []
-        
+
         for metric in metrics:
-            if metric in strategy1_data.columns:
+            # Para Hands Played, normaliza para que el gráfico sea comparable (por ejemplo, escala 0-1)
+            if metric == 'Hands Played':
+                max_played = max(strategy1_data[metric].mean(), strategy2_data[metric].mean(), 1)
+                strategy1_values.append(strategy1_data[metric].mean() / max_played)
+                strategy2_values.append(strategy2_data[metric].mean() / max_played)
+            else:
                 strategy1_values.append(strategy1_data[metric].mean())
                 strategy2_values.append(strategy2_data[metric].mean())
-            else:
-                strategy1_values.append(0)
-                strategy2_values.append(0)
-        
-        # Add position metrics values
-        for position_metric in position_metrics:
-            position = position_metric.split(' Win Rate')[0]
-            
-            # Get position stats for strategy 1
-            if 'Position Stats' in strategy1_data.columns and not strategy1_data.empty:
-                position_stats = strategy1_data['Position Stats'].iloc[0]
-                if position in position_stats and isinstance(position_stats[position], dict) and 'win_rate' in position_stats[position]:
-                    strategy1_values.append(position_stats[position]['win_rate'])
-                else:
-                    strategy1_values.append(0)
-            else:
-                strategy1_values.append(0)
-                
-            # Get position stats for strategy 2
-            if 'Position Stats' in strategy2_data.columns and not strategy2_data.empty:
-                position_stats = strategy2_data['Position Stats'].iloc[0]
-                if position in position_stats and isinstance(position_stats[position], dict) and 'win_rate' in position_stats[position]:
-                    strategy2_values.append(position_stats[position]['win_rate'])
-                else:
-                    strategy2_values.append(0)
-            else:
-                strategy2_values.append(0)
-        
-        # Create radar chart
+
+        # Radar chart setup
         ax = self.comparison_figure.add_subplot(111, polar=True)
-        
-        # Number of variables
-        N = len(all_metrics)
-        
-        # Angle of each axis
+        N = len(metrics)
         angles = [n / float(N) * 2 * np.pi for n in range(N)]
         angles += angles[:1]  # Close the loop
-        
-        # Add values for each strategy (also close the loop)
+
+        # Close the loop for values
         strategy1_values += strategy1_values[:1]
         strategy2_values += strategy2_values[:1]
-        
+
         # Draw the chart
         ax.plot(angles, strategy1_values, linewidth=1, linestyle='solid', label=strategy1)
         ax.fill(angles, strategy1_values, alpha=0.1)
-        
+
         ax.plot(angles, strategy2_values, linewidth=1, linestyle='solid', label=strategy2)
         ax.fill(angles, strategy2_values, alpha=0.1)
-        
+
         # Add labels
-        plt.xticks(angles[:-1], all_metrics)
-        
+        plt.xticks(angles[:-1], metrics)
+
         # Add legend
         ax.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
-        
+
         # Set chart title
-        ax.set_title(f"Strategy Comparison: {strategy1} vs {strategy2}")
-        
+        ax.set_title(f"Strategy Comparison: {strategy1} vs {strategy2}", color='white')
+
         # Adjust appearance for dark theme
         ax.set_facecolor("#202020")
         ax.spines['polar'].set_color('white')
         ax.tick_params(axis='both', colors='white')
-        ax.set_title(f"Strategy Comparison: {strategy1} vs {strategy2}", color='white')
-        
+
         # Draw the chart
         self.comparison_canvas.draw()
 
