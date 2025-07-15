@@ -285,11 +285,6 @@ class PokerGUI:
         self.player_stats_tree.column("Win Rate", width=80)
         self.player_stats_tree.column("Win Rate Total", width=100)
         self.player_stats_tree.pack(fill=X, pady=(0, 10))
-
-        # Add Interactive Analysis tab
-        self.analysis_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.analysis_frame, text="Interactive Analysis")
-
         # Create placeholder for Plotly figure
         self.plotly_widget = None
 
